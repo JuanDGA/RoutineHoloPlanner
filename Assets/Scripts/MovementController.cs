@@ -8,7 +8,6 @@ public class MovementController : MonoBehaviour
     public GameObject playerCamera;
     public PressableButton button;
     public GameObject cube;
-    public LineRenderer line;
 
     private bool activated;
 
@@ -24,18 +23,22 @@ public class MovementController : MonoBehaviour
     void OnTriggerFollow()
     {
         activated = !activated;
-        line.positionCount = 0;
-        lastPos = playerCamera.transform.position + Vector3.down * 1.2f;
+        lastPos = GetPathRelativePos();
         AddPoint(lastPos);
+    }
+
+    Vector3 GetPathRelativePos()
+    {
+        return playerCamera.transform.position + Vector3.down * 1.7f;
     }
 
     // Update is called once per frame
 
     void AddPoint(Vector3 newPoint)
     {
-        int index = line.positionCount;
-        line.positionCount = index + 1;
-        line.SetPosition(index, newPoint);
+        GameObject sphere =  GameObject.CreatePrimitive(PrimitiveType.Sphere);
+        sphere.transform.position = newPoint;
+        sphere.transform.localScale = new Vector3(0.5f, 0.5f, 0.5f);
     }
     
     void Update()
@@ -43,9 +46,9 @@ public class MovementController : MonoBehaviour
         if (activated)
         {
             cube.transform.position = playerCamera.transform.position + playerCamera.transform.forward * 2;
-            if (Vector3.Distance(playerCamera.transform.position, lastPos) > 0.1f)
+            if (Vector3.Distance(GetPathRelativePos(), lastPos) > 0.1f)
             {
-                lastPos = playerCamera.transform.position + Vector3.down * 1.2f;
+                lastPos = GetPathRelativePos();
                 AddPoint(lastPos);
             }
         }
