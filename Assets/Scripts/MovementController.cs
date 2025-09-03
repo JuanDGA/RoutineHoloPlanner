@@ -9,22 +9,25 @@ public class MovementController : MonoBehaviour
     public PressableButton button;
     public GameObject cube;
 
-    private bool activated;
+    private bool _activated;
 
-    private Vector3 lastPos;
+    private Vector3 _lastPos;
+    
+    private readonly Vector3 _sphereScale = new Vector3(0.1f, 0.1f, 0.1f);
+    private readonly Material _sphereMaterial = new Material();
     
     // Start is called before the first frame update
     void Start()
     {
-        activated = false;
+        _activated = false;
         button.OnClicked.AddListener(OnTriggerFollow);
     }
 
     void OnTriggerFollow()
     {
-        activated = !activated;
-        lastPos = GetPathRelativePos();
-        AddPoint(lastPos);
+        _activated = !_activated;
+        _lastPos = GetPathRelativePos();
+        AddPoint(_lastPos);
     }
 
     Vector3 GetPathRelativePos()
@@ -38,18 +41,19 @@ public class MovementController : MonoBehaviour
     {
         GameObject sphere =  GameObject.CreatePrimitive(PrimitiveType.Sphere);
         sphere.transform.position = newPoint;
-        sphere.transform.localScale = new Vector3(0.5f, 0.5f, 0.5f);
+        sphere.transform.localScale = _sphereScale;
+
     }
     
     void Update()
     {
-        if (activated)
+        if (_activated)
         {
             cube.transform.position = playerCamera.transform.position + playerCamera.transform.forward * 2;
-            if (Vector3.Distance(GetPathRelativePos(), lastPos) > 0.1f)
+            if (Vector3.Distance(GetPathRelativePos(), _lastPos) > 0.1f)
             {
-                lastPos = GetPathRelativePos();
-                AddPoint(lastPos);
+                _lastPos = GetPathRelativePos();
+                AddPoint(_lastPos);
             }
         }
         button.transform.position = playerCamera.transform.position + playerCamera.transform.forward * 1.5f;
