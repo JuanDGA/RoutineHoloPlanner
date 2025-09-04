@@ -2,11 +2,13 @@ using System.Collections;
 using System.Collections.Generic;
 using MixedReality.Toolkit.UX;
 using UnityEngine;
+using UnityEngine.Serialization;
 
 public class MovementController : MonoBehaviour
 {
     public GameObject playerCamera;
-    public PressableButton button;
+    public GameObject linesParent;
+    public PressableButton triggerButton;
     public Material planeMaterial;
     
     
@@ -15,19 +17,43 @@ public class MovementController : MonoBehaviour
 
     private bool _activated;
     private Vector3 _lastPos;
+    private List<LineRenderer> _lines;
+    private LineRenderer _currentLine;
+    private List<Vector3> _linePositions;
     
     // Start is called before the first frame update
     void Start()
     {
         _activated = false;
-        button.OnClicked.AddListener(OnTriggerFollow);
+        triggerButton.OnClicked.AddListener(OnTriggerFollow);
+        
+        _lines = new List<LineRenderer>();
+        _linePositions = new List<Vector3>();
+    }
+
+    void CreateLine()
+    {
+        _linePositions.Clear();
+        _currentLine = new GameObject().AddComponent<LineRenderer>();
+        _currentLine.material = planeMaterial;
+        _currentLine.startWidth = planeSize;
+        _currentLine.endWidth = planeSize;
+        _currentLine.transform.SetParent(linesParent.transform);
     }
 
     void OnTriggerFollow()
     {
-        _activated = !_activated;
         _lastPos = GetPathRelativePos();
-        AddPoint(_lastPos);
+        _activated = !_activated;
+        if (!_activated) // Save and create new one
+        {
+            _lines.Add(_currentLine);
+        }
+        else
+        {
+            CreateLine();
+            AddPoint(_lastPos);
+        }
     }
 
     Vector3 GetPathRelativePos()
@@ -39,12 +65,9 @@ public class MovementController : MonoBehaviour
 
     void AddPoint(Vector3 newPoint)
     {
-        GameObject plane =  GameObject.CreatePrimitive(PrimitiveType.Plane);
-        plane.transform.position = newPoint;
-        plane.transform.localScale = new Vector3(planeSize, planeSize, planeSize);
-        Vector3 euler = playerCamera.transform.rotation.eulerAngles;
-        plane.transform.rotation = Quaternion.Euler(0f, euler.y, 0f);
-        plane.GetComponent<Renderer>().sharedMaterial = planeMaterial;
+        _linePositions.Add(newPoint);
+        _currentLine.positionCount = _linePositions.Count;
+        _currentLine.SetPositions(_linePositions.ToArray());
     }
     
     void Update()
@@ -57,7 +80,7 @@ public class MovementController : MonoBehaviour
                 AddPoint(_lastPos);
             }
         }
-        button.transform.position = playerCamera.transform.position + playerCamera.transform.forward * 1.5f;
-        button.transform.rotation = playerCamera.transform.rotation;
+        triggerButton.transform.position = playerCamera.transform.position + playerCamera.transform.forward * 1.5f;
+        triggerButton.transform.rotation = playerCamera.transform.rotation;
     }
 }
