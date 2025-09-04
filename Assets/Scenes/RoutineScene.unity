@@ -434,8 +434,8 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   playerCamera: {fileID: 1798374652}
   linesParent: {fileID: 2100235347}
+  pathsMaterial: {fileID: 2100000, guid: 0c3570eeff29ef44e9fed596a4cc3ffd, type: 2}
   triggerButton: {fileID: 2051134024}
-  planeMaterial: {fileID: 2100000, guid: 0c3570eeff29ef44e9fed596a4cc3ffd, type: 2}
   lastStepDistance: 0.01
   planeSize: 0.05
 --- !u!1 &1505247486

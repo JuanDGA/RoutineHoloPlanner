@@ -8,9 +8,9 @@ public class MovementController : MonoBehaviour
 {
     public GameObject playerCamera;
     public GameObject linesParent;
-    public PressableButton triggerButton;
-    public Material planeMaterial;
+    public Material pathsMaterial;
     
+    public PressableButton triggerButton;
     
     public float lastStepDistance = 0.01f;
     public float planeSize = 0.05f;
@@ -35,15 +35,25 @@ public class MovementController : MonoBehaviour
     {
         _linePositions.Clear();
         _currentLine = new GameObject().AddComponent<LineRenderer>();
-        _currentLine.material = planeMaterial;
+        _currentLine.material = pathsMaterial;
         _currentLine.startWidth = planeSize;
         _currentLine.endWidth = planeSize;
         _currentLine.transform.SetParent(linesParent.transform);
     }
 
+    void CreateNode(Vector3 pos)
+    {
+        GameObject node = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
+        node.transform.localScale = new Vector3(planeSize * 3, planeSize * 0.1f, planeSize * 3);
+        node.transform.position = pos;
+        node.GetComponent<Renderer>().sharedMaterial = pathsMaterial;
+        node.transform.SetParent(linesParent.transform);
+    }
+
     void OnTriggerFollow()
     {
         _lastPos = GetPathRelativePos();
+        CreateNode(_lastPos);
         _activated = !_activated;
         if (!_activated) // Save and create new one
         {
@@ -80,7 +90,5 @@ public class MovementController : MonoBehaviour
                 AddPoint(_lastPos);
             }
         }
-        triggerButton.transform.position = playerCamera.transform.position + playerCamera.transform.forward * 1.5f;
-        triggerButton.transform.rotation = playerCamera.transform.rotation;
     }
 }
