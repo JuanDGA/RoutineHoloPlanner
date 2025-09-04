@@ -19,6 +19,7 @@ public class MovementController : MonoBehaviour
     private Vector3 _lastPos;
     private List<LineRenderer> _lines;
     private LineRenderer _currentLine;
+    private float _currentY;
     private List<Vector3> _linePositions;
     
     // Start is called before the first frame update
@@ -53,14 +54,17 @@ public class MovementController : MonoBehaviour
     void OnTriggerFollow()
     {
         _lastPos = GetPathRelativePos();
-        CreateNode(_lastPos);
         _activated = !_activated;
         if (!_activated) // Save and create new one
         {
+            _lastPos.y = _currentY;
+            CreateNode(_lastPos);
             _lines.Add(_currentLine);
         }
         else
         {
+            _currentY = _lastPos.y;
+            CreateNode(_lastPos);
             CreateLine();
             AddPoint(_lastPos);
         }
@@ -75,6 +79,7 @@ public class MovementController : MonoBehaviour
 
     void AddPoint(Vector3 newPoint)
     {
+        newPoint.y = _currentY;
         _linePositions.Add(newPoint);
         _currentLine.positionCount = _linePositions.Count;
         _currentLine.SetPositions(_linePositions.ToArray());
