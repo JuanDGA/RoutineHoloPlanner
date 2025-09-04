@@ -423,6 +423,9 @@ MonoBehaviour:
   playerCamera: {fileID: 1798374652}
   button: {fileID: 2051134024}
   cube: {fileID: 2063982091}
+  planeMaterial: {fileID: 2100000, guid: 0c3570eeff29ef44e9fed596a4cc3ffd, type: 2}
+  lastStepDistance: 0.05
+  planeSize: 0.2
 --- !u!1 &1505247486
 GameObject:
   m_ObjectHideFlags: 0
@@ -595,7 +598,7 @@ MeshRenderer:
   m_RenderingLayerMask: 1
   m_RendererPriority: 0
   m_Materials:
-  - {fileID: 2100000, guid: fa21a874e3f75f84f8a7d806d8809ca0, type: 2}
+  - {fileID: 2100000, guid: f62f188dc6a5f55458ac47e93b3951f4, type: 2}
   m_StaticBatchInfo:
     firstSubMesh: 0
     subMeshCount: 0

@@ -7,14 +7,14 @@ public class MovementController : MonoBehaviour
 {
     public GameObject playerCamera;
     public PressableButton button;
-    public GameObject cube;
+    public Material planeMaterial;
+    
+    
+    public float lastStepDistance = 0.01f;
+    public float planeSize = 0.05f;
 
     private bool _activated;
-
     private Vector3 _lastPos;
-    
-    private readonly Vector3 _sphereScale = new Vector3(0.1f, 0.1f, 0.1f);
-    private readonly Material _sphereMaterial = new Material();
     
     // Start is called before the first frame update
     void Start()
@@ -39,18 +39,19 @@ public class MovementController : MonoBehaviour
 
     void AddPoint(Vector3 newPoint)
     {
-        GameObject sphere =  GameObject.CreatePrimitive(PrimitiveType.Sphere);
-        sphere.transform.position = newPoint;
-        sphere.transform.localScale = _sphereScale;
-
+        GameObject plane =  GameObject.CreatePrimitive(PrimitiveType.Plane);
+        plane.transform.position = newPoint;
+        plane.transform.localScale = new Vector3(planeSize, planeSize, planeSize);
+        Vector3 euler = playerCamera.transform.rotation.eulerAngles;
+        plane.transform.rotation = Quaternion.Euler(0f, euler.y, 0f);
+        plane.GetComponent<Renderer>().sharedMaterial = planeMaterial;
     }
     
     void Update()
     {
         if (_activated)
         {
-            cube.transform.position = playerCamera.transform.position + playerCamera.transform.forward * 2;
-            if (Vector3.Distance(GetPathRelativePos(), _lastPos) > 0.1f)
+            if (Vector3.Distance(GetPathRelativePos(), _lastPos) > lastStepDistance)
             {
                 _lastPos = GetPathRelativePos();
                 AddPoint(_lastPos);
