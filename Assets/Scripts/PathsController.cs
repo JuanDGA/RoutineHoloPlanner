@@ -5,7 +5,7 @@ using MixedReality.Toolkit.UX;
 using UnityEngine;
 using UnityEngine.Serialization;
 
-public class MovementController : MonoBehaviour
+public class PathsController : MonoBehaviour
 {
     public GameObject playerCamera;
     public GameObject linesParent;
@@ -15,6 +15,8 @@ public class MovementController : MonoBehaviour
     
     public float lastStepDistance = 0.01f;
     public float planeSize = 0.05f;
+    
+    private readonly ApiService _apiService = new ApiService();
 
     private bool _activated;
     private Vector3 _lastPos;
@@ -31,6 +33,7 @@ public class MovementController : MonoBehaviour
         
         _lines = new List<LineRenderer>();
         _linePositions = new List<Vector3>();
+        
     }
 
     void CreateLine()
