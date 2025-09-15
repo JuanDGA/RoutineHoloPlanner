@@ -1,9 +1,7 @@
 using System;
-using System.Collections;
 using System.Collections.Generic;
 using MixedReality.Toolkit.UX;
 using UnityEngine;
-using UnityEngine.Serialization;
 
 public class PathsController : MonoBehaviour
 {
@@ -13,25 +11,29 @@ public class PathsController : MonoBehaviour
     
     public PressableButton triggerButton;
     
+    public delegate void OnTrackStarts(Vector3 position);
+    public static OnTrackStarts onTrackStarts;
+    
+    public delegate void OnTrackEnds(List<Vector3> line);
+    public static OnTrackEnds onTrackEnds;
+    
     public float lastStepDistance = 0.01f;
     public float planeSize = 0.05f;
     
-    private readonly ApiService _apiService = new ApiService();
-
     private bool _activated;
     private Vector3 _lastPos;
-    private List<LineRenderer> _lines;
-    private LineRenderer _currentLine;
     private float _currentY;
+    private LineRenderer _currentLine;
     private List<Vector3> _linePositions;
+    
+    private Vector3 _smoothedPos;
+    public float smoothFactor = 0.1f;
     
     // Start is called before the first frame update
     void Start()
     {
         _activated = false;
         triggerButton.OnClicked.AddListener(OnTriggerFollow);
-        
-        _lines = new List<LineRenderer>();
         _linePositions = new List<Vector3>();
         
     }
@@ -114,35 +116,24 @@ public class PathsController : MonoBehaviour
         return adjusted;
     }
 
-    void CreateNode(Vector3 pos)
-    {
-        GameObject node = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
-        node.transform.localScale = new Vector3(planeSize * 3, planeSize * 0.1f, planeSize * 3);
-        node.transform.position = pos;
-        node.GetComponent<Renderer>().sharedMaterial = pathsMaterial;
-        node.transform.SetParent(linesParent.transform);
-    }
-
     void OnTriggerFollow()
     {
-        _lastPos = GetPathRelativePos();
-        _activated = !_activated;
-        if (!_activated) // Save and create new one
+        if (!_activated)
         {
-            _lastPos.y = _currentY;
-            CreateNode(_lastPos);
-            List<Vector3> smooth = SmoothLine(_linePositions, _linePositions.Count / 20);
-            _linePositions = smooth;
-            _currentLine.positionCount = _linePositions.Count;
-            _currentLine.SetPositions(_linePositions.ToArray());
-            _lines.Add(_currentLine);
+            _linePositions =  new List<Vector3>();
+            _lastPos = GetPathRelativePos();
+            _linePositions.Add(_lastPos);
+            if (onTrackStarts != null) onTrackStarts.Invoke(_lastPos);
+            CreateLine();
+            AddPoint(_lastPos);
+            _activated = true;
         }
         else
         {
-            _currentY = _lastPos.y;
-            CreateNode(_lastPos);
-            CreateLine();
-            AddPoint(_lastPos);
+            _activated = false;
+            _lastPos = GetPathRelativePos();
+            _linePositions.Add(_lastPos);
+            if (onTrackEnds != null) onTrackEnds.Invoke(_linePositions);
         }
     }
 
@@ -150,8 +141,6 @@ public class PathsController : MonoBehaviour
     {
         return playerCamera.transform.position + Vector3.down * 1.7f;
     }
-
-    // Update is called once per frame
 
     void AddPoint(Vector3 newPoint)
     {
@@ -165,9 +154,12 @@ public class PathsController : MonoBehaviour
     {
         if (_activated)
         {
-            if (Vector3.Distance(GetPathRelativePos(), _lastPos) > lastStepDistance)
+            Vector3 rawPos = GetPathRelativePos();
+            _smoothedPos = Vector3.Lerp(_smoothedPos, rawPos, smoothFactor);
+
+            if (Vector3.Distance(_smoothedPos, _lastPos) > lastStepDistance)
             {
-                _lastPos = GetPathRelativePos();
+                _lastPos = _smoothedPos;
                 AddPoint(_lastPos);
             }
         }
