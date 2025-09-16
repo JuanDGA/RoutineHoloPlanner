@@ -10,7 +10,7 @@ public class RoutineController : MonoBehaviour
     public Material nodesMaterial;
     public AudioSource audioSource;
 
-    private TextToSpeechSubsystem _textToSpeechSubsystem;
+    private TextToSpeechSubsystem _tts;
     
     public float planeSize = 0.05f;
     
@@ -18,7 +18,7 @@ public class RoutineController : MonoBehaviour
     // Start is called before the first frame update
     void Start()
     {
-        _textToSpeechSubsystem = XRSubsystemHelpers.GetFirstRunningSubsystem<TextToSpeechSubsystem>();
+        _tts = XRSubsystemHelpers.GetFirstRunningSubsystem<TextToSpeechSubsystem>();
     }
 
     void OnEnable()
@@ -35,15 +35,23 @@ public class RoutineController : MonoBehaviour
     }
 
 
+    void Speak(string text)
+    {
+        _tts.TrySpeak(text, audioSource);
+    } 
+
+
     void HandleStartTracking(Vector3 position)
     {
-        _textToSpeechSubsystem.TrySpeak("Recording movement. Walk across the path that you want the robot to follow", audioSource);
+        if (!MainStateHandler.DoingTutorial)
+            Speak("Recording movement. Walk across the path that you want the robot to follow");
     }
 
 
     void HandleEndTracking(List<Vector3> positions)
     {
-        _textToSpeechSubsystem.TrySpeak("Recording stopped", audioSource);
+        if (!MainStateHandler.DoingTutorial)
+            Speak("Recording stopped");
     }
 
     void CreateNode(Vector3 pos)
