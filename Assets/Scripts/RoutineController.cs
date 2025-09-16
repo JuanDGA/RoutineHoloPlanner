@@ -37,13 +37,13 @@ public class RoutineController : MonoBehaviour
 
     void HandleStartTracking(Vector3 position)
     {
-        _textToSpeechSubsystem.TrySpeak("Grabando movimiento. Camina por donde deseas que se mueva el robot", audioSource);
+        _textToSpeechSubsystem.TrySpeak("Recording movement. Walk across the path that you want the robot to follow", audioSource);
     }
 
 
     void HandleEndTracking(List<Vector3> positions)
     {
-        _textToSpeechSubsystem.TrySpeak("Deteniendo grabación", audioSource);
+        _textToSpeechSubsystem.TrySpeak("Recording stopped", audioSource);
     }
 
     void CreateNode(Vector3 pos)
