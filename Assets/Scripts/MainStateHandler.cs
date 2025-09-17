@@ -16,14 +16,22 @@ public class MainStateHandler : MonoBehaviour
     public PressableButton nodeButton;
     public PressableButton saveButton;
     public PressableButton cancelButton;
+    
+    [Header("Paths Drawing")]
+    public GameObject linesParent;
+    public Material pathsMaterial;
+    public float lastStepDistance = 0.05f;
+    public float planeSize = 0.05f;
+    public float smoothFactor = 0.1f;
 
     private TextToSpeechSubsystem _tts;
     
+    // Tutorial variables
     public static bool DoingTutorial;
-    private bool _isMovingMenuToCenter;
-    private RoutineController _routineController;
-
     private int _currentTutorialStage;
+    
+    // Main menu variables
+    private bool _isMovingMenuToCenter;
 
     
     // Start is called before the first frame update
@@ -45,7 +53,7 @@ public class MainStateHandler : MonoBehaviour
     // Update is called once per frame
     void Update()
     {
-        
+        PathsController.Compute(mainCamera, smoothFactor, lastStepDistance);
     }
 
     private void FixedUpdate()
@@ -75,6 +83,24 @@ public class MainStateHandler : MonoBehaviour
     }
 
 
+    IEnumerator WaitForLongPath()
+    {
+        while (true)
+        {
+            if (PathsController.CurrentPathDistance(3.0f) >= 3.0f) break;
+            yield return WaitUntilOrTimeout(() => PathsController.CurrentPathDistance(3.0f) >= 3.0f, 10);
+            if (PathsController.CurrentPathDistance(3.0f) >= 3.0f) break;
+            Speak("Walk in your room by creating a long enough path. The path is being drawn in your feet.");
+            yield return WaitSpeaking();
+        }
+        _currentTutorialStage = 4;
+        PathsController.Deactivate(mainCamera, false);
+        Speak("Now you walked enough distance. In the hand menu press add node.");
+        yield return WaitSpeaking();
+        
+    }
+
+
     IEnumerator WaitForFirstButton()
     {
         Speak("The first option is the one that let's you walk in your room while recording the positions you visit.");
@@ -90,9 +116,13 @@ public class MainStateHandler : MonoBehaviour
             Speak("Click the start button");
             yield return WaitSpeaking();
         }
+
+        _currentTutorialStage = 3;
         startButton.enabled = false;
         Speak("Walk in your room by creating a long enough path. The path is being drawn in your feet.");
         yield return WaitSpeaking();
+        PathsController.Activate(mainCamera, pathsMaterial, planeSize, linesParent);
+        StartCoroutine(WaitForLongPath());
     }
 
     IEnumerator WaitForLookHand()
@@ -110,7 +140,7 @@ public class MainStateHandler : MonoBehaviour
         StartCoroutine(WaitForFirstButton());
     }
 
-    IEnumerator TutorialWelcomeCorountine()
+    IEnumerator TutorialWelcomeCoroutine()
     {
         Speak("Welcome to the Pepper Robot Routine Planner");
         yield return WaitSpeaking();
@@ -128,7 +158,7 @@ public class MainStateHandler : MonoBehaviour
         nodeButton.enabled = false;
         saveButton.enabled = false;
         cancelButton.enabled = false;
-        StartCoroutine(TutorialWelcomeCorountine());
+        StartCoroutine(TutorialWelcomeCoroutine());
     }
 
     public void LookingAtHand()

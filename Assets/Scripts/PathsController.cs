@@ -1,44 +1,64 @@
 using System;
 using System.Collections.Generic;
 using MixedReality.Toolkit.UX;
+using Unity.VisualScripting;
 using UnityEngine;
 
-public class PathsController : MonoBehaviour
+public class PathsController
 {
-    public GameObject playerCamera;
-    public GameObject linesParent;
-    public Material pathsMaterial;
+    private static bool _activated;
+    private static Vector3 _lastPos;
+    private static float _currentY;
+    private static LineRenderer _currentLine;
+    private static List<Vector3> _linePositions;
     
-    public PressableButton triggerButton;
-    
-    public delegate void OnTrackStarts(Vector3 position);
-    public static OnTrackStarts onTrackStarts;
-    
-    public delegate void OnTrackEnds(List<Vector3> line);
-    public static OnTrackEnds onTrackEnds;
-    
-    public float lastStepDistance = 0.01f;
-    public float planeSize = 0.05f;
-    
-    private bool _activated;
-    private Vector3 _lastPos;
-    private float _currentY;
-    private LineRenderer _currentLine;
-    private List<Vector3> _linePositions;
-    
-    private Vector3 _smoothedPos;
-    public float smoothFactor = 0.1f;
-    
-    // Start is called before the first frame update
-    void Start()
+    private static Vector3 _smoothedPos;
+
+    public static bool IsActivated()
     {
-        _activated = false;
-        triggerButton.OnClicked.AddListener(OnTriggerFollow);
-        _linePositions = new List<Vector3>();
-        
+        return _activated;
     }
 
-    void CreateLine()
+    public static float CurrentPathDistance(float limit = Single.PositiveInfinity)
+    {
+        if (_linePositions.Count <= 1) return 0.0f;
+        if (_linePositions.Count == 2) return (_linePositions[0] - _linePositions[1]).magnitude;
+        float totalDistance = 0;
+        for (int i = 1; i < _linePositions.Count; i++)
+        {
+            totalDistance += (_linePositions[i] - _linePositions[i - 1]).magnitude;
+            if (totalDistance >= limit) return totalDistance;
+        }
+
+        return totalDistance;
+    }
+
+    public static List<Vector3> CurrentPath()
+    {
+        return _linePositions;
+    }
+
+    public static void Activate(GameObject playerCamera, Material pathsMaterial, float planeSize, GameObject linesParent)
+    {
+        if (_activated) return;
+        if (_linePositions == null) _linePositions = new List<Vector3>();
+        _lastPos = GetPathRelativePos(playerCamera);
+        _linePositions.Add(_lastPos);
+        CreateLine(pathsMaterial, planeSize, linesParent);
+        AddPoint(_lastPos);
+        _activated = true;
+    }
+
+    public static void Deactivate(GameObject playerCamera, bool reset = true)
+    {
+        if (!_activated) return;
+        _activated = false;
+        _lastPos = GetPathRelativePos(playerCamera);
+        _linePositions.Add(_lastPos);
+        if (reset) _linePositions =  new List<Vector3>();
+    }
+
+    private static void CreateLine(Material pathsMaterial, float planeSize, GameObject linesParent)
     {
         _linePositions.Clear();
         _currentLine = new GameObject().AddComponent<LineRenderer>();
@@ -65,7 +85,7 @@ public class PathsController : MonoBehaviour
         return (Math.Abs(b) < 1e-6f) ? 1f : a / b;
     }
     
-    public static List<Vector3> SmoothLine(List<Vector3> points, int windowSize)
+    private static List<Vector3> SmoothLine(List<Vector3> points, int windowSize)
     {
         if (points == null || points.Count == 0 || windowSize < 1)
             throw new ArgumentException("Invalid input");
@@ -116,33 +136,12 @@ public class PathsController : MonoBehaviour
         return adjusted;
     }
 
-    void OnTriggerFollow()
-    {
-        if (!_activated)
-        {
-            _linePositions =  new List<Vector3>();
-            _lastPos = GetPathRelativePos();
-            _linePositions.Add(_lastPos);
-            if (onTrackStarts != null) onTrackStarts.Invoke(_lastPos);
-            CreateLine();
-            AddPoint(_lastPos);
-            _activated = true;
-        }
-        else
-        {
-            _activated = false;
-            _lastPos = GetPathRelativePos();
-            _linePositions.Add(_lastPos);
-            if (onTrackEnds != null) onTrackEnds.Invoke(_linePositions);
-        }
-    }
-
-    Vector3 GetPathRelativePos()
+    private static Vector3 GetPathRelativePos(GameObject playerCamera)
     {
         return playerCamera.transform.position + Vector3.down * 1.7f;
     }
 
-    void AddPoint(Vector3 newPoint)
+    private static void AddPoint(Vector3 newPoint)
     {
         newPoint.y = _currentY;
         _linePositions.Add(newPoint);
@@ -150,18 +149,17 @@ public class PathsController : MonoBehaviour
         _currentLine.SetPositions(_linePositions.ToArray());
     }
     
-    void Update()
+    public static void Compute(GameObject playerCamera, float smoothFactor, float lastStepDistance)
     {
-        if (_activated)
-        {
-            Vector3 rawPos = GetPathRelativePos();
-            _smoothedPos = Vector3.Lerp(_smoothedPos, rawPos, smoothFactor);
+        if (!_activated) return;
+        
+        Vector3 rawPos = GetPathRelativePos(playerCamera);
+        _smoothedPos = Vector3.Lerp(_smoothedPos, rawPos, smoothFactor);
 
-            if (Vector3.Distance(_smoothedPos, _lastPos) > lastStepDistance)
-            {
-                _lastPos = _smoothedPos;
-                AddPoint(_lastPos);
-            }
+        if (Vector3.Distance(_smoothedPos, _lastPos) > lastStepDistance)
+        {
+            _lastPos = _smoothedPos;
+            AddPoint(_lastPos);
         }
     }
 }

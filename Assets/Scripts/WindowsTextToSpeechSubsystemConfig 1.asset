@@ -12,5 +12,5 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: cf38127d08ef6cd4dbdeddf6e8e8a8f9, type: 3}
   m_Name: WindowsTextToSpeechSubsystemConfig 1
   m_EditorClassIdentifier: 
-  voice: 0
-  customVoice: Helena
+  voice: 4
+  customVoice: Susan
