@@ -95,9 +95,8 @@ public class MainStateHandler : MonoBehaviour
         }
         _currentTutorialStage = 4;
         PathsController.Deactivate(mainCamera, false);
-        Speak("Now you walked enough distance. In the hand menu press add node.");
+        Speak("Now you walked enough distance. In the hand menu press Add node.");
         yield return WaitSpeaking();
-        
     }
 
 

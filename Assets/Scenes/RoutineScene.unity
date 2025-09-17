@@ -132,55 +132,6 @@ GameObject:
   m_CorrespondingSourceObject: {fileID: 7294214612838230065, guid: acbf65a81ce2cf94f82a0809298acf70, type: 3}
   m_PrefabInstance: {fileID: 1798374651}
   m_PrefabAsset: {fileID: 0}
---- !u!1 &172850974
-GameObject:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  serializedVersion: 6
-  m_Component:
-  - component: {fileID: 172850975}
-  - component: {fileID: 172850976}
-  m_Layer: 0
-  m_Name: Routines
-  m_TagString: Untagged
-  m_Icon: {fileID: 0}
-  m_NavMeshLayer: 0
-  m_StaticEditorFlags: 0
-  m_IsActive: 1
---- !u!4 &172850975
-Transform:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 172850974}
-  serializedVersion: 2
-  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 0, y: 0, z: 0}
-  m_LocalScale: {x: 1, y: 1, z: 1}
-  m_ConstrainProportionsScale: 0
-  m_Children: []
-  m_Father: {fileID: 1505247487}
-  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!114 &172850976
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 172850974}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: dde64c7b1b67430ab964882d507651d0, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  playerCamera: {fileID: 1798374652}
-  linesParent: {fileID: 2100235347}
-  nodesMaterial: {fileID: 0}
-  audioSource: {fileID: 610941388}
-  planeSize: 0.05
 --- !u!114 &282015361 stripped
 MonoBehaviour:
   m_CorrespondingSourceObject: {fileID: 5935963046560133884, guid: 506cbd034c7d76f45b0ef11fe23b8e53, type: 3}
@@ -633,7 +584,6 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 1130814056}
-  - component: {fileID: 1130814057}
   m_Layer: 0
   m_Name: Paths
   m_TagString: Untagged
@@ -656,25 +606,6 @@ Transform:
   m_Children: []
   m_Father: {fileID: 1505247487}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!114 &1130814057
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1130814055}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 51c0b61edd435c3429d935dc9aabf864, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  playerCamera: {fileID: 1798374652}
-  linesParent: {fileID: 2100235347}
-  pathsMaterial: {fileID: 2100000, guid: 0c3570eeff29ef44e9fed596a4cc3ffd, type: 2}
-  triggerButton: {fileID: 282015361}
-  lastStepDistance: 0.01
-  planeSize: 0.05
-  smoothFactor: 0.1
 --- !u!1 &1226875801 stripped
 GameObject:
   m_CorrespondingSourceObject: {fileID: 5769779419222680682, guid: acbf65a81ce2cf94f82a0809298acf70, type: 3}
@@ -1031,7 +962,6 @@ Transform:
   m_Children:
   - {fileID: 1130814056}
   - {fileID: 2100235348}
-  - {fileID: 172850975}
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!114 &1505247488
@@ -1053,6 +983,11 @@ MonoBehaviour:
   nodeButton: {fileID: 719011290}
   saveButton: {fileID: 2138455248}
   cancelButton: {fileID: 1710021192}
+  linesParent: {fileID: 2100235347}
+  pathsMaterial: {fileID: 2100000, guid: 0c3570eeff29ef44e9fed596a4cc3ffd, type: 2}
+  lastStepDistance: 0.05
+  planeSize: 0.05
+  smoothFactor: 0.1
 --- !u!114 &1710021192 stripped
 MonoBehaviour:
   m_CorrespondingSourceObject: {fileID: 4820305362186937815, guid: 506cbd034c7d76f45b0ef11fe23b8e53, type: 3}
