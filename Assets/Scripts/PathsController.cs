@@ -66,10 +66,39 @@ public class PathsController
         return totalDistance;
     }
 
-    public static List<Vector3> CurrentPath()
+    public static (List<Vector3>, List<ApiService.Node>) CurrentPath()
     {
-        // TODO: Convert the _linePoints into points followinf the reference origin
-        return _linePositions;
+        Debug.Log("Nodes: " + _nodes.Count + "|" + _nodesMenu.Count + "|" + _nodesMenu.Count);
+        List<ApiService.Node> nodes = new List<ApiService.Node>();
+        List<Vector3> convertedPositions = new();
+        
+        for (int i = 0; i < _nodes.Count; i++)
+        {
+            var n =  _nodes[i];
+            var node = new ApiService.Node
+            {
+                index = n,
+                text = _nodesMenu[i].GetComponent<NodeMenu>().Text,
+                animation = _nodesMenu[i].GetComponent<NodeMenu>().Animation,
+            };
+            nodes.Add(node);
+        }
+
+        for (int i = 0; i < _linePositions.Count; i++)
+        {
+            // Transform the world position to the local coordinate system
+            Vector3 worldPosition = _linePositions[i];
+        
+            // First translate to origin (subtract reference position)
+            Vector3 translatedPosition = worldPosition - _transformPosition;
+        
+            // Then apply inverse rotation to align with reference rotation
+            Vector3 localPosition = Quaternion.Inverse(_transformRotation) * translatedPosition;
+        
+            convertedPositions.Add(localPosition);
+        }
+        
+        return (convertedPositions, nodes);
     }
 
     public static void Activate()

@@ -6,24 +6,21 @@ using UnityEngine.Networking;
 
 public class ApiService
 {
-    private static readonly string _ApiUrl = "http://localhost:5000/api";
+    private static readonly string _ApiUrl = "http://157.253.192.192:8080/api";
     
     [Serializable]
     public class Node
     {
-        public string dialog;
+        public int index;
+        public string text;
         public string animation;
-        public Node nextNode;
-        public List<Vector3> pathToNextNode;
     }
 
     [Serializable]
     public class Routine
     {
-        public string name;
-        public string description;
         public List<Node> nodes;
-        public DateTime CreatedAt;
+        public List<Vector3> line;
     }
 
     [Serializable]
@@ -32,23 +29,27 @@ public class ApiService
         public List<Routine> routines;
     }
     
-    public IEnumerator GetRoutines(Action<List<Routine>> onComplete)
+    public static IEnumerator PostRoutine(Routine routine)
     {
-        using (UnityWebRequest www = UnityWebRequest.Get(_ApiUrl + "/routines"))
+        string jsonData = JsonUtility.ToJson(routine);
+    
+        using (UnityWebRequest www = UnityWebRequest.PostWwwForm(_ApiUrl + "/walk", ""))
         {
+            byte[] bodyRaw = System.Text.Encoding.UTF8.GetBytes(jsonData);
+            www.uploadHandler = new UploadHandlerRaw(bodyRaw);
+            www.downloadHandler = new DownloadHandlerBuffer();
+            www.SetRequestHeader("Content-Type", "application/json");
+        
             yield return www.SendWebRequest();
-            
+        
             if (www.result != UnityWebRequest.Result.Success)
             {
-                Debug.LogError("API Error: " + www.error);
-                onComplete?.Invoke(null);
+                Debug.LogError("API Post Error: " + www.error + " - Response: " + www.downloadHandler.text);
                 yield break;
             }
-            
-            string jsonResult = www.downloadHandler.text;
-            Wrapper wrapper = JsonUtility.FromJson<Wrapper>(jsonResult);
-            
-            onComplete?.Invoke(wrapper.routines);
+        
+            Debug.Log("Routine posted successfully: " + www.downloadHandler.text);
         }
     }
+
 }

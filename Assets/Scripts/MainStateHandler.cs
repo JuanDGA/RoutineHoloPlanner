@@ -1,5 +1,6 @@
 using System;
 using System.Collections;
+using System.Collections.Generic;
 using MixedReality.Toolkit;
 using MixedReality.Toolkit.Subsystems;
 using MixedReality.Toolkit.UX;
@@ -395,7 +396,21 @@ public class MainStateHandler : MonoBehaviour
         if (_currentRoutineState != RoutineState.Previewing) return;
         
         // TODO: Use the API Service
+
+        var path = PathsController.CurrentPath();
+        var path2 = "";
+        for (int i = 0; i < path.Item1.Count; i++)
+        {
+            path2 += path.Item1[i].ToString() + " | ";
+        }
+        Debug.Log(path2);
         
+        ApiService.Routine routine = new  ApiService.Routine
+        {
+            nodes = path.Item2,
+            line = path.Item1
+        };
+        StartCoroutine(ApiService.PostRoutine(routine));
         _currentRoutineState = RoutineState.Publishing;
         restoreButton.enabled = true;
         restoreButton.gameObject.SetActive(true);
