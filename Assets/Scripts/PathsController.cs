@@ -1,22 +1,55 @@
 using System;
 using System.Collections.Generic;
-using MixedReality.Toolkit.UX;
 using Unity.VisualScripting;
 using UnityEngine;
 
 public class PathsController
 {
+    private static Vector3 _transformPosition;
+    private static Quaternion _transformRotation;
+    
     private static bool _activated;
     private static Vector3 _lastPos;
     private static float _currentY;
     private static LineRenderer _currentLine;
-    private static List<Vector3> _linePositions;
+    private static List<Vector3> _linePositions = new();
+    private static List<int> _nodes = new(); // Indices of nodes in _linePositions
+    private static List<GameObject> _nodesMenu = new();
+    private static List<GameObject> _nodeObjects = new();
     
     private static Vector3 _smoothedPos;
 
-    public static bool IsActivated()
+    private static GameObject _playerCamera;
+    private static Material _pathsMaterial;
+    private static float _planeSize;
+    private static GameObject _linesParent;
+    private static float _lastStepDistance;
+    private static GameObject _nodeMenuPrefab;
+
+    public static void SetUp(GameObject playerCamera, Material pathsMaterial, float planeSize, GameObject linesParent, float lastStepDistance, GameObject nodeMenuPrefab)
     {
-        return _activated;
+        _playerCamera = playerCamera;
+        _pathsMaterial = pathsMaterial;
+        _planeSize = planeSize;
+        _linesParent = linesParent;
+        _lastStepDistance = lastStepDistance;
+        _nodeMenuPrefab = nodeMenuPrefab;
+    }
+
+    public static void Restore()
+    {
+        _currentLine.gameObject.SetActive(false);
+        for (int i = 0; i < _nodesMenu.Count; i++)
+        {
+            GameObject nodeMenu = _nodesMenu[i];
+            GameObject nodeObject = _nodeObjects[i];
+            nodeMenu.SetActive(false);
+            nodeObject.SetActive(false);
+        }
+
+        _nodesMenu = new List<GameObject>();
+        _nodeObjects = new List<GameObject>();
+        _nodes = new List<int>();
     }
 
     public static float CurrentPathDistance(float limit = Single.PositiveInfinity)
@@ -35,136 +68,100 @@ public class PathsController
 
     public static List<Vector3> CurrentPath()
     {
+        // TODO: Convert the _linePoints into points followinf the reference origin
         return _linePositions;
     }
 
-    public static void Activate(GameObject playerCamera, Material pathsMaterial, float planeSize, GameObject linesParent)
+    public static void Activate()
     {
         if (_activated) return;
         if (_linePositions == null) _linePositions = new List<Vector3>();
-        _lastPos = GetPathRelativePos(playerCamera);
-        _linePositions.Add(_lastPos);
-        CreateLine(pathsMaterial, planeSize, linesParent);
-        AddPoint(_lastPos);
+        if (_nodes == null) _nodes = new List<int>();
+        _currentY = GetPathRelativePos().y;
+        CreateLine(); // TODO: Refactor line generation logic
         _activated = true;
     }
 
-    public static void Deactivate(GameObject playerCamera, bool reset = true)
+    public static void AddNode(float sizeMultiplier = 1.0f)
+    {
+        if (!_activated) return;
+        var (nodeIdx, position) = Compute(true);
+        GameObject node = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
+        node.transform.localScale = new Vector3(_planeSize * 3 * sizeMultiplier, _planeSize * 0.1f * sizeMultiplier, _planeSize * 3 * sizeMultiplier);
+        node.transform.position = position;
+        node.GetComponent<Renderer>().sharedMaterial = _pathsMaterial;
+        node.transform.SetParent(_linesParent.transform);
+        _nodesMenu.Add(MainStateHandler.Instantiate(_nodeMenuPrefab, position + Vector3.up * 1.5f, Quaternion.identity));
+        _nodeObjects.Add(node);
+        _nodes.Add(nodeIdx);
+    }
+
+    public static void Deactivate()
     {
         if (!_activated) return;
         _activated = false;
-        _lastPos = GetPathRelativePos(playerCamera);
-        _linePositions.Add(_lastPos);
-        if (reset) _linePositions =  new List<Vector3>();
     }
 
-    private static void CreateLine(Material pathsMaterial, float planeSize, GameObject linesParent)
+    private static void CreateLine()
     {
         _linePositions.Clear();
+        _nodes.Clear();
+        if (_currentLine != null) return; 
         _currentLine = new GameObject().AddComponent<LineRenderer>();
-        _currentLine.material = pathsMaterial;
-        _currentLine.startWidth = planeSize;
-        _currentLine.endWidth = planeSize;
-        _currentLine.transform.SetParent(linesParent.transform);
-    }
-    
-    private static (Vector3 min, Vector3 max) GetBounds(List<Vector3> pts)
-    {
-        Vector3 min = new Vector3(float.MaxValue, float.MaxValue, float.MaxValue);
-        Vector3 max = new Vector3(float.MinValue, float.MinValue, float.MinValue);
-        foreach (var p in pts)
-        {
-            min = Vector3.Min(min, p);
-            max = Vector3.Max(max, p);
-        }
-        return (min, max);
-    }
-
-    private static float SafeDiv(float a, float b)
-    {
-        return (Math.Abs(b) < 1e-6f) ? 1f : a / b;
-    }
-    
-    private static List<Vector3> SmoothLine(List<Vector3> points, int windowSize)
-    {
-        if (points == null || points.Count == 0 || windowSize < 1)
-            throw new ArgumentException("Invalid input");
-
-        // Step 1: smooth
-        var smoothed = new List<Vector3>(points.Count);
-        for (int i = 0; i < points.Count; i++)
-        {
-            int start = Math.Max(0, i - windowSize);
-            int end = Math.Min(points.Count - 1, i + windowSize);
-
-            Vector3 sum = Vector3.zero;
-            int count = 0;
-
-            for (int j = start; j <= end; j++)
-            {
-                sum += points[j];
-                count++;
-            }
-
-            smoothed.Add(sum / count);
-        }
-
-        // Step 2: compute bounding boxes
-        (Vector3 minOrig, Vector3 maxOrig) = GetBounds(points);
-        (Vector3 minSmooth, Vector3 maxSmooth) = GetBounds(smoothed);
-
-        Vector3 scale = new Vector3(
-            SafeDiv(maxOrig.x - minOrig.x, maxSmooth.x - minSmooth.x),
-            SafeDiv(maxOrig.y - minOrig.y, maxSmooth.y - minSmooth.y),
-            SafeDiv(maxOrig.z - minOrig.z, maxSmooth.z - minSmooth.z)
-        );
-
-        // Step 3: rescale + translate smoothed points
-        var adjusted = new List<Vector3>(points.Count);
-        for (int i = 0; i < smoothed.Count; i++)
-        {
-            Vector3 relative = smoothed[i] - minSmooth;
-            Vector3 scaled = new Vector3(
-                relative.x * scale.x,
-                relative.y * scale.y,
-                relative.z * scale.z
-            );
-            Vector3 translated = scaled + minOrig;
-            adjusted.Add(translated);
-        }
-
-        return adjusted;
+        _currentLine.material = _pathsMaterial;
+        _currentLine.startWidth = _planeSize;
+        _currentLine.endWidth = _planeSize;
+        _currentLine.transform.SetParent(_linesParent.transform);
     }
 
     public static void SetReference(Vector3 transformPosition, Quaternion transformRotation)
     {
-        
+        _transformPosition = transformPosition;
+        _transformRotation = transformRotation;
     }
 
-    private static Vector3 GetPathRelativePos(GameObject playerCamera)
+    private static Vector3 GetPathRelativePos()
     {
-        return playerCamera.transform.position + Vector3.down * 1.7f;
+        return _playerCamera.transform.position + Vector3.down * 1.7f;
     }
 
-    private static void AddPoint(Vector3 newPoint)
+    private static (int, Vector3) AddPoint(Vector3 newPoint)
     {
         newPoint.y = _currentY;
         _linePositions.Add(newPoint);
         _currentLine.positionCount = _linePositions.Count;
         _currentLine.SetPositions(_linePositions.ToArray());
+        return (_linePositions.Count - 1, newPoint);
     }
     
-    public static void Compute(GameObject playerCamera, float smoothFactor, float lastStepDistance)
+    public static (int, Vector3) Compute(bool addingNode = false)
     {
-        if (!_activated) return;
-        
-        Vector3 rawPos = GetPathRelativePos(playerCamera);
-        _smoothedPos = Vector3.Lerp(_smoothedPos, rawPos, smoothFactor);
-
-        if (Vector3.Distance(_smoothedPos, _lastPos) > lastStepDistance)
+        if (!_activated)
         {
-            _lastPos = _smoothedPos;
-            AddPoint(_lastPos);
+            for (int i = 0; i < _nodes.Count; i++)
+            {
+                GameObject nodeMenu = _nodesMenu[i];
+                nodeMenu.SetActive(true);
+                nodeMenu.GetComponent<NodeMenu>().SetPosition(_linePositions[_nodes[i]] + Vector3.up * 1.5f, _playerCamera);
+            }
+            return (-1, Vector3.zero);
         }
+        
+        for (int i = 0; i < _nodes.Count; i++)
+        {
+            GameObject nodeMenu = _nodesMenu[i];
+            nodeMenu.SetActive(false);
+        }
+        
+        Vector3 rawPos = GetPathRelativePos();
+        rawPos.y = _currentY;
+
+        if (addingNode || Vector3.Distance(rawPos, _lastPos) > _lastStepDistance)
+        {
+            _lastPos = rawPos;
+            return AddPoint(_lastPos);
+        }
+
+        return (-1, Vector3.zero);
     }
 }

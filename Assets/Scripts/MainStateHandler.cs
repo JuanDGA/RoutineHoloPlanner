@@ -14,9 +14,19 @@ public class MainStateHandler : MonoBehaviour
         Walking,
         AddingNode,
         Calibrating,
-        FinalWalking
+        FinalWalking,
+        Previewing,
+        Publishing
     }
-    
+
+    private enum RoutineState
+    {
+        Idle,
+        Calibrating,
+        Recording,
+        Previewing,
+        Publishing
+    }
     
     public GameObject mainMenu;
     public GameObject mainCamera;
@@ -31,15 +41,15 @@ public class MainStateHandler : MonoBehaviour
     public PressableButton startButton;
     public PressableButton nodeButton;
     public PressableButton saveButton;
-    public PressableButton cancelButton;
-    public PressableButton continueButton;
+    public PressableButton publishButton;
+    public PressableButton restoreButton;
     
     [Header("Paths Drawing")]
+    public GameObject nodeMenuPrefab;
     public GameObject linesParent;
     public Material pathsMaterial;
     public float lastStepDistance = 0.05f;
     public float planeSize = 0.05f;
-    public float smoothFactor = 0.1f;
 
     private TextToSpeechSubsystem _tts;
     
@@ -47,33 +57,63 @@ public class MainStateHandler : MonoBehaviour
     public static bool DoingTutorial;
     private TutorialStage _currentTutorialStage = TutorialStage.OpeningHandMenu;
     
+    // Routine variables
+    private RoutineState _currentRoutineState = RoutineState.Idle;
+    
     // Main menu variables
     private bool _isMovingMenuToCenter;
-
     
-    // Start is called before the first frame update
     void Start()
     {
+        PathsController.SetUp(mainCamera, pathsMaterial, planeSize, linesParent, lastStepDistance, nodeMenuPrefab);
+        
         mainMenu.transform.position = mainCamera.transform.position + mainCamera.transform.forward;
         mainMenu.transform.rotation = mainCamera.transform.rotation;
         _tts = XRSubsystemHelpers.GetFirstRunningSubsystem<TextToSpeechSubsystem>();
         
-        if (startButton != null) startButton.OnClicked.AddListener(StartButtonPressed);
+        if (startButton != null)
+        {
+            startButton.OnClicked.AddListener(StartButtonPressed);
+            startButton.enabled = true;
+        }
+        if (nodeButton != null)
+        {
+            nodeButton.OnClicked.AddListener(AddNodeButtonPressed);
+            nodeButton.enabled = false;
+        }
+        if (saveButton != null)
+        {
+            saveButton.OnClicked.AddListener(SaveButtonPressed);
+            saveButton.enabled = false;
+        }
+        if (publishButton != null)
+        {
+            publishButton.OnClicked.AddListener(PublishButtonPressed);
+            publishButton.gameObject.SetActive(false);
+        }
+        if (restoreButton != null)
+        {
+            restoreButton.OnClicked.AddListener(RestoreButtonPressed);
+            restoreButton.gameObject.SetActive(false);
+        }
         if (calibrateButton != null) calibrateButton.OnClicked.AddListener(CalibrateButtonPressed);
-        if (nodeButton != null) nodeButton.OnClicked.AddListener(AddNodeButtonPressed);
-        if (saveButton != null) saveButton.OnClicked.AddListener(SaveButtonPressed);
     }
     
     void OnDestroy()
     {
         if (startButton != null) startButton.OnClicked.RemoveListener(StartButtonPressed);
+        if (nodeButton != null) nodeButton.OnClicked.RemoveListener(AddNodeButtonPressed);
+        if (saveButton != null) saveButton.OnClicked.RemoveListener(SaveButtonPressed);
+        if (calibrateButton != null) calibrateButton.OnClicked.RemoveListener(CalibrateButtonPressed);
+        if (publishButton != null) publishButton.OnClicked.RemoveListener(PublishButtonPressed);
+        if (restoreButton != null) restoreButton.OnClicked.RemoveListener(RestoreButtonPressed);
     }
 
 
     // Update is called once per frame
     void Update()
     {
-        PathsController.Compute(mainCamera, smoothFactor, lastStepDistance);
+        PathsController.Compute();
     }
 
     private void FixedUpdate()
@@ -103,9 +143,46 @@ public class MainStateHandler : MonoBehaviour
         }
     }
 
+    IEnumerator WaitForSendToRobot()
+    {
+        Speak("Now you can walk to each node and configure the animation and speech that you want the robot to say.");
+        yield return WaitSpeaking();
+        Speak("Once you are done, move the Pepper robot to the start position looking into the right direction.");
+        yield return WaitSpeaking();
+        Speak("Then click the publish button.");
+        yield return WaitSpeaking();
+        publishButton.enabled = true;
+        publishButton.gameObject.SetActive(true);
+        while (true)
+        {
+            if (_currentTutorialStage == TutorialStage.Publishing) break;
+            yield return WaitUntilOrTimeout(() => _currentTutorialStage == TutorialStage.Publishing, 20);
+            if (_currentTutorialStage == TutorialStage.Publishing) break;
+            Speak("Remember to click the Publish button in the menu in order to complete the tutorial.");
+            yield return WaitSpeaking();
+        }
+        Speak("Great! Now you have sent your first routine to the robot.");
+        yield return WaitSpeaking();
+        Speak("You have completed the tutorial. You can now create more routines by clicking the Clear button in the menu.");
+        yield return WaitSpeaking();
+
+        DoingTutorial = false;
+        _currentTutorialStage = TutorialStage.OpeningHandMenu;
+    }
+
     IEnumerator WaitForCompleteRoutineButton()
     {
-        
+        while (true)
+        {
+            if (_currentTutorialStage == TutorialStage.Previewing) break;
+            yield return WaitUntilOrTimeout(() => _currentTutorialStage == TutorialStage.Previewing, 20);
+            if (_currentTutorialStage == TutorialStage.Previewing) break;
+            Speak("Remember to click the Save button when you are ready in the menu in order proceed with the tutorial.");
+            yield return WaitSpeaking();
+        }
+        Speak("Great! Now you have completed your first routine.");
+        yield return WaitSpeaking();
+        StartCoroutine(WaitForSendToRobot());
     }
 
     IEnumerator WaitForAddNodeButton()
@@ -117,12 +194,11 @@ public class MainStateHandler : MonoBehaviour
         while (true)
         {
             if (_currentTutorialStage == TutorialStage.FinalWalking) break;
-            yield return WaitUntilOrTimeout(() => _currentTutorialStage == TutorialStage.FinalWalking, 20);
+            yield return WaitUntilOrTimeout(() => _currentTutorialStage == TutorialStage.FinalWalking, 15);
             if (_currentTutorialStage == TutorialStage.FinalWalking) break;
-            Speak("Remember to click the Add node button in the menu in order proceed with the tutorial.");
+            Speak("Remember to click the Add node button in the menu in order to proceed with the tutorial.");
             yield return WaitSpeaking();
         }
-        PathsController.Deactivate(mainCamera, false);
         Speak("Perfect! Now you have created the first node in your path.");
         yield return WaitSpeaking();
         Speak("In each node you will be able to configure the animation and the speech that you want the robot to say.");
@@ -131,7 +207,6 @@ public class MainStateHandler : MonoBehaviour
         yield return WaitSpeaking();
         Speak("Now you can keep walking and adding new nodes or you can save the routine by clicking the save routine button.");
         yield return WaitSpeaking();
-        PathsController.Activate(mainCamera, pathsMaterial, planeSize, linesParent);
         StartCoroutine(WaitForCompleteRoutineButton());
     }
 
@@ -140,7 +215,6 @@ public class MainStateHandler : MonoBehaviour
     {
         Speak("Walk in your room by creating a long enough path. The path is being drawn in your feet.");
         yield return WaitSpeaking();
-        PathsController.Activate(mainCamera, pathsMaterial, planeSize, linesParent);
         
         while (true)
         {
@@ -186,9 +260,6 @@ public class MainStateHandler : MonoBehaviour
             yield return WaitSpeaking();
         }
         startButton.enabled = false;
-        startButton.gameObject.SetActive(true);
-        continueButton.gameObject.SetActive(true);
-        continueButton.enabled = false;
         Speak("The start position is the most important, this application assumes that the point in which you start the routine, in the same direction that you are, is the same position and direction in which the robot will start moving.");
         yield return WaitSpeaking();
         calibrationMenu.SetActive(true);
@@ -199,13 +270,13 @@ public class MainStateHandler : MonoBehaviour
     {
         while (true)
         {
-            if (_currentTutorialStage == TutorialStage.OpeningHandMenu) break;
-            yield return WaitUntilOrTimeout(() => _currentTutorialStage == TutorialStage.OpeningHandMenu, 5);
-            if (_currentTutorialStage == TutorialStage.OpeningHandMenu) break;
+            if (_currentTutorialStage == TutorialStage.PressingStartButton) break;
+            yield return WaitUntilOrTimeout(() => _currentTutorialStage == TutorialStage.PressingStartButton, 5);
+            if (_currentTutorialStage == TutorialStage.PressingStartButton) break;
             Speak("To access the menu, look at your hand's palm.");
             yield return WaitSpeaking();
         }
-        Speak("In this menu you have four options. Let's start with the first one.");
+        Speak("In this menu you have three options. Let's start with the first one.");
         yield return WaitSpeaking();
         StartCoroutine(WaitForStartButton());
     }
@@ -227,8 +298,6 @@ public class MainStateHandler : MonoBehaviour
         startButton.enabled = false;
         nodeButton.enabled = false;
         saveButton.enabled = false;
-        cancelButton.enabled = false;
-        cancelButton.gameObject.SetActive(false);
         StartCoroutine(TutorialWelcomeCoroutine());
     }
 
@@ -242,22 +311,115 @@ public class MainStateHandler : MonoBehaviour
 
     void StartButtonPressed()
     {
-        if (!DoingTutorial || _currentTutorialStage != TutorialStage.PressingStartButton) return;
-        if (DoingTutorial) _currentTutorialStage = TutorialStage.Calibrating;
+        if (_currentRoutineState != RoutineState.Idle) return; // Can you start something already started? :)
+        _currentRoutineState = RoutineState.Calibrating;
+        
+        // Tutorial handling
+        if (!DoingTutorial) {
+            calibrationMenu.SetActive(true);
+            return; // Why to handle tutorial if not doing it?
+        }
+        
+        if (_currentTutorialStage != TutorialStage.PressingStartButton) return;
+        _currentTutorialStage = TutorialStage.Calibrating;
     }
 
     void CalibrateButtonPressed()
     {
+        if (_currentRoutineState != RoutineState.Calibrating) return; // Can you calibrate something not in calibration?
+        
+        _currentRoutineState = RoutineState.Recording;
+        
         PathsController.SetReference(mainCamera.transform.position, mainCamera.transform.rotation);
-        if (!DoingTutorial || _currentTutorialStage != TutorialStage.Calibrating) return;
-        if (DoingTutorial) _currentTutorialStage = TutorialStage.Walking;
+        
+        calibrationMenu.SetActive(false);
+        
+        saveButton.enabled = true;
+        
+        PathsController.Activate();
+        PathsController.AddNode(1.5f);
+        
+        // Tutorial handling
+        if (!DoingTutorial)
+        {
+            nodeButton.enabled = true;
+            return;
+        } // Why to handle tutorial if not doing it?
+        if (_currentTutorialStage != TutorialStage.Calibrating) return;
+        _currentTutorialStage = TutorialStage.Walking;
     }
-
 
     void AddNodeButtonPressed()
     {
-        if (!DoingTutorial || _currentTutorialStage != TutorialStage.PressingStartButton) return;
-        if (DoingTutorial) _currentTutorialStage = TutorialStage.Calibrating;
+        Debug.Log("Added node ... " + _currentRoutineState);
+        if (_currentRoutineState != RoutineState.Recording) return; // Can you add a node if not recording? :v
+        
+        PathsController.AddNode();
+        
+        // Tutorial handling
+        if (!DoingTutorial) return; // Why to handle tutorial if not doing it?
+        
+        if (_currentTutorialStage != TutorialStage.AddingNode) return;
+        _currentTutorialStage = TutorialStage.FinalWalking;
+    }
+
+
+    void SaveButtonPressed()
+    {
+        if (_currentRoutineState != RoutineState.Recording) return; // Can you save... nothing? :0
+        
+        PathsController.AddNode(1.3f);
+        PathsController.Deactivate();
+        saveButton.enabled = false;
+        saveButton.gameObject.SetActive(false);
+        
+        _currentRoutineState = RoutineState.Previewing;
+        
+        // Tutorial handling
+        if (!DoingTutorial)
+        {
+            publishButton.enabled = true;
+            publishButton.gameObject.SetActive(true);
+            return;
+        } // Why to handle tutorial if not doing it? :D
+        
+        if (_currentTutorialStage != TutorialStage.FinalWalking) return;
+        _currentTutorialStage = TutorialStage.Previewing;
+    }
+
+
+    void PublishButtonPressed()
+    {
+        // Can you publish if not previewing?
+        // Actually you can, but I do not care. :D
+        if (_currentRoutineState != RoutineState.Previewing) return;
+        
+        // TODO: Use the API Service
+        
+        _currentRoutineState = RoutineState.Publishing;
+        restoreButton.enabled = true;
+        restoreButton.gameObject.SetActive(true);
+        
+        // Tutorial handling
+        if (!DoingTutorial) return; // Why to handle tutorial if not doing it? :D
+        
+        if (_currentTutorialStage != TutorialStage.Previewing) return;
+        _currentTutorialStage = TutorialStage.Publishing;
+    }
+
+    void RestoreButtonPressed()
+    {
+        if (_currentRoutineState != RoutineState.Publishing) return;
+
+        _currentRoutineState = RoutineState.Idle;
+        restoreButton.enabled = false;
+        restoreButton.gameObject.SetActive(false);
+        publishButton.enabled = false;
+        publishButton.gameObject.SetActive(false);
+        saveButton.enabled = false;
+        nodeButton.enabled = false;
+        startButton.enabled = true;
+        PathsController.Restore();
     }
 
 
@@ -266,26 +428,8 @@ public class MainStateHandler : MonoBehaviour
         Vector3 targetPosition = mainCamera.transform.position + mainCamera.transform.forward;
         Quaternion targetRotation = mainCamera.transform.rotation;
         
-        Vector3 directionToMenu = (menu.transform.position - mainCamera.transform.position).normalized;
-        float angleToMenu = Vector3.Angle(mainCamera.transform.forward, directionToMenu);
-        
-        bool isInFieldOfView = angleToMenu < 40f;
-            
-        if (!isInFieldOfView && !_isMovingMenuToCenter)
-        {
-            _isMovingMenuToCenter = true;
-        }
-        
-        if (_isMovingMenuToCenter)
-        {
-            float easeSpeed = 2f;
-            menu.transform.position = Vector3.Lerp(menu.transform.position, targetPosition, Time.deltaTime * easeSpeed);
-            menu.transform.rotation = Quaternion.Slerp(menu.transform.rotation, targetRotation, Time.deltaTime * easeSpeed);
-            
-            if (Vector3.Distance(menu.transform.position, targetPosition) < 0.01f)
-            {
-                _isMovingMenuToCenter = false;
-            }
-        }
+        float easeSpeed = 2f;
+        menu.transform.position = Vector3.Lerp(menu.transform.position, targetPosition, Time.deltaTime * easeSpeed);
+        menu.transform.rotation = Quaternion.Slerp(menu.transform.rotation, targetRotation, Time.deltaTime * easeSpeed);
     }
 }
