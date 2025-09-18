@@ -136,6 +136,11 @@ public class PathsController
         return adjusted;
     }
 
+    public static void SetReference(Vector3 transformPosition, Quaternion transformRotation)
+    {
+        
+    }
+
     private static Vector3 GetPathRelativePos(GameObject playerCamera)
     {
         return playerCamera.transform.position + Vector3.down * 1.7f;

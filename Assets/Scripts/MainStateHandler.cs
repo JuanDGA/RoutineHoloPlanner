@@ -7,15 +7,32 @@ using UnityEngine;
 
 public class MainStateHandler : MonoBehaviour
 {
+    private enum TutorialStage 
+    {
+        OpeningHandMenu,
+        PressingStartButton,
+        Walking,
+        AddingNode,
+        Calibrating,
+        FinalWalking
+    }
+    
+    
     public GameObject mainMenu;
     public GameObject mainCamera;
     public AudioSource audioSource;
+    
+    [Header("Calibration menu")]
+    public GameObject calibrationMenu;
+
+    public PressableButton calibrateButton;
     
     [Header("Hand menu buttons")]
     public PressableButton startButton;
     public PressableButton nodeButton;
     public PressableButton saveButton;
     public PressableButton cancelButton;
+    public PressableButton continueButton;
     
     [Header("Paths Drawing")]
     public GameObject linesParent;
@@ -28,7 +45,7 @@ public class MainStateHandler : MonoBehaviour
     
     // Tutorial variables
     public static bool DoingTutorial;
-    private int _currentTutorialStage;
+    private TutorialStage _currentTutorialStage = TutorialStage.OpeningHandMenu;
     
     // Main menu variables
     private bool _isMovingMenuToCenter;
@@ -42,6 +59,9 @@ public class MainStateHandler : MonoBehaviour
         _tts = XRSubsystemHelpers.GetFirstRunningSubsystem<TextToSpeechSubsystem>();
         
         if (startButton != null) startButton.OnClicked.AddListener(StartButtonPressed);
+        if (calibrateButton != null) calibrateButton.OnClicked.AddListener(CalibrateButtonPressed);
+        if (nodeButton != null) nodeButton.OnClicked.AddListener(AddNodeButtonPressed);
+        if (saveButton != null) saveButton.OnClicked.AddListener(SaveButtonPressed);
     }
     
     void OnDestroy()
@@ -58,7 +78,8 @@ public class MainStateHandler : MonoBehaviour
 
     private void FixedUpdate()
     {
-        if (mainMenu.activeSelf) UpdateMainMenuPosition();
+        if (mainMenu.activeSelf) UpdateMenuPosition(mainMenu);
+        if (calibrationMenu.activeSelf) UpdateMenuPosition(calibrationMenu);
     }
     
     void Speak(string text)
@@ -82,9 +103,45 @@ public class MainStateHandler : MonoBehaviour
         }
     }
 
+    IEnumerator WaitForCompleteRoutineButton()
+    {
+        
+    }
+
+    IEnumerator WaitForAddNodeButton()
+    {
+        Speak("Now you walked enough distance. In the hand menu, press the Add node button.");
+        yield return WaitSpeaking();
+        nodeButton.enabled = true;
+        Speak("You can continue drawing your path by walking if you want to.");
+        while (true)
+        {
+            if (_currentTutorialStage == TutorialStage.FinalWalking) break;
+            yield return WaitUntilOrTimeout(() => _currentTutorialStage == TutorialStage.FinalWalking, 20);
+            if (_currentTutorialStage == TutorialStage.FinalWalking) break;
+            Speak("Remember to click the Add node button in the menu in order proceed with the tutorial.");
+            yield return WaitSpeaking();
+        }
+        PathsController.Deactivate(mainCamera, false);
+        Speak("Perfect! Now you have created the first node in your path.");
+        yield return WaitSpeaking();
+        Speak("In each node you will be able to configure the animation and the speech that you want the robot to say.");
+        yield return WaitSpeaking();
+        Speak("The options will appear on each node once you decide to complete the routine.");
+        yield return WaitSpeaking();
+        Speak("Now you can keep walking and adding new nodes or you can save the routine by clicking the save routine button.");
+        yield return WaitSpeaking();
+        PathsController.Activate(mainCamera, pathsMaterial, planeSize, linesParent);
+        StartCoroutine(WaitForCompleteRoutineButton());
+    }
+
 
     IEnumerator WaitForLongPath()
     {
+        Speak("Walk in your room by creating a long enough path. The path is being drawn in your feet.");
+        yield return WaitSpeaking();
+        PathsController.Activate(mainCamera, pathsMaterial, planeSize, linesParent);
+        
         while (true)
         {
             if (PathsController.CurrentPathDistance(3.0f) >= 3.0f) break;
@@ -93,14 +150,27 @@ public class MainStateHandler : MonoBehaviour
             Speak("Walk in your room by creating a long enough path. The path is being drawn in your feet.");
             yield return WaitSpeaking();
         }
-        _currentTutorialStage = 4;
-        PathsController.Deactivate(mainCamera, false);
-        Speak("Now you walked enough distance. In the hand menu press Add node.");
+        _currentTutorialStage = TutorialStage.AddingNode;
+        StartCoroutine(WaitForAddNodeButton());
+    }
+
+    IEnumerator WaitForCalibration()
+    {
+        Speak("Please, walk to the position in which the robot will start, and look at the direction in which the robot will start looking at. Then, click the calibrate button.");
         yield return WaitSpeaking();
+        while (true)
+        {
+            if (_currentTutorialStage == TutorialStage.Walking) break;
+            yield return WaitUntilOrTimeout(() => _currentTutorialStage == TutorialStage.Walking, 10);
+            if (_currentTutorialStage == TutorialStage.Walking) break;
+            Speak("Please, walk to the position in which the robot will start, and look at the direction in which the robot will start looking at. Then, click the calibrate button.");
+            yield return WaitSpeaking();
+        }
+        StartCoroutine(WaitForLongPath());
     }
 
 
-    IEnumerator WaitForFirstButton()
+    IEnumerator WaitForStartButton()
     {
         Speak("The first option is the one that let's you walk in your room while recording the positions you visit.");
         yield return WaitSpeaking();
@@ -109,34 +179,35 @@ public class MainStateHandler : MonoBehaviour
         startButton.enabled = true;
         while (true)
         {
-            if (_currentTutorialStage == 2) break;
-            yield return WaitUntilOrTimeout(() => _currentTutorialStage == 2, 5);
-            if (_currentTutorialStage == 2) break;
+            if (_currentTutorialStage == TutorialStage.Calibrating) break;
+            yield return WaitUntilOrTimeout(() => _currentTutorialStage == TutorialStage.Calibrating, 5);
+            if (_currentTutorialStage == TutorialStage.Calibrating) break;
             Speak("Click the start button");
             yield return WaitSpeaking();
         }
-
-        _currentTutorialStage = 3;
         startButton.enabled = false;
-        Speak("Walk in your room by creating a long enough path. The path is being drawn in your feet.");
+        startButton.gameObject.SetActive(true);
+        continueButton.gameObject.SetActive(true);
+        continueButton.enabled = false;
+        Speak("The start position is the most important, this application assumes that the point in which you start the routine, in the same direction that you are, is the same position and direction in which the robot will start moving.");
         yield return WaitSpeaking();
-        PathsController.Activate(mainCamera, pathsMaterial, planeSize, linesParent);
-        StartCoroutine(WaitForLongPath());
+        calibrationMenu.SetActive(true);
+        StartCoroutine(WaitForCalibration());
     }
 
     IEnumerator WaitForLookHand()
     {
         while (true)
         {
-            if (_currentTutorialStage == 1) break;
-            yield return WaitUntilOrTimeout(() => _currentTutorialStage == 1, 5);
-            if (_currentTutorialStage == 1) break;
+            if (_currentTutorialStage == TutorialStage.OpeningHandMenu) break;
+            yield return WaitUntilOrTimeout(() => _currentTutorialStage == TutorialStage.OpeningHandMenu, 5);
+            if (_currentTutorialStage == TutorialStage.OpeningHandMenu) break;
             Speak("To access the menu, look at your hand's palm.");
             yield return WaitSpeaking();
         }
         Speak("In this menu you have four options. Let's start with the first one.");
         yield return WaitSpeaking();
-        StartCoroutine(WaitForFirstButton());
+        StartCoroutine(WaitForStartButton());
     }
 
     IEnumerator TutorialWelcomeCoroutine()
@@ -157,33 +228,48 @@ public class MainStateHandler : MonoBehaviour
         nodeButton.enabled = false;
         saveButton.enabled = false;
         cancelButton.enabled = false;
+        cancelButton.gameObject.SetActive(false);
         StartCoroutine(TutorialWelcomeCoroutine());
     }
 
     public void LookingAtHand()
     {
         if (!DoingTutorial) return;
-        if (_currentTutorialStage >= 1) return;
-        _currentTutorialStage = 1;
+        if (_currentTutorialStage != TutorialStage.OpeningHandMenu) return;
+        _currentTutorialStage = TutorialStage.PressingStartButton;
     }
 
 
     void StartButtonPressed()
     {
-        if (_currentTutorialStage >= 2) return;
-        _currentTutorialStage = 2;
+        if (!DoingTutorial || _currentTutorialStage != TutorialStage.PressingStartButton) return;
+        if (DoingTutorial) _currentTutorialStage = TutorialStage.Calibrating;
+    }
+
+    void CalibrateButtonPressed()
+    {
+        PathsController.SetReference(mainCamera.transform.position, mainCamera.transform.rotation);
+        if (!DoingTutorial || _currentTutorialStage != TutorialStage.Calibrating) return;
+        if (DoingTutorial) _currentTutorialStage = TutorialStage.Walking;
     }
 
 
-    private void UpdateMainMenuPosition()
+    void AddNodeButtonPressed()
+    {
+        if (!DoingTutorial || _currentTutorialStage != TutorialStage.PressingStartButton) return;
+        if (DoingTutorial) _currentTutorialStage = TutorialStage.Calibrating;
+    }
+
+
+    private void UpdateMenuPosition(GameObject menu)
     {
         Vector3 targetPosition = mainCamera.transform.position + mainCamera.transform.forward;
         Quaternion targetRotation = mainCamera.transform.rotation;
         
-        Vector3 directionToMenu = (mainMenu.transform.position - mainCamera.transform.position).normalized;
+        Vector3 directionToMenu = (menu.transform.position - mainCamera.transform.position).normalized;
         float angleToMenu = Vector3.Angle(mainCamera.transform.forward, directionToMenu);
         
-        bool isInFieldOfView = angleToMenu < 100f;
+        bool isInFieldOfView = angleToMenu < 40f;
             
         if (!isInFieldOfView && !_isMovingMenuToCenter)
         {
@@ -193,10 +279,10 @@ public class MainStateHandler : MonoBehaviour
         if (_isMovingMenuToCenter)
         {
             float easeSpeed = 2f;
-            mainMenu.transform.position = Vector3.Lerp(mainMenu.transform.position, targetPosition, Time.deltaTime * easeSpeed);
-            mainMenu.transform.rotation = Quaternion.Slerp(mainMenu.transform.rotation, targetRotation, Time.deltaTime * easeSpeed);
+            menu.transform.position = Vector3.Lerp(menu.transform.position, targetPosition, Time.deltaTime * easeSpeed);
+            menu.transform.rotation = Quaternion.Slerp(menu.transform.rotation, targetRotation, Time.deltaTime * easeSpeed);
             
-            if (Vector3.Distance(mainMenu.transform.position, targetPosition) < 0.1f)
+            if (Vector3.Distance(menu.transform.position, targetPosition) < 0.01f)
             {
                 _isMovingMenuToCenter = false;
             }
