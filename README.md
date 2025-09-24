@@ -2,3 +2,5 @@
 
 ## ROS-Python follower repository
 https://github.com/JuanDGA/pepper_routine_follower
+## Server
+https://github.com/JuanDGA/routine_orchestrator
