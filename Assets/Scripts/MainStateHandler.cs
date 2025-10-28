@@ -1,6 +1,5 @@
 using System;
 using System.Collections;
-using System.Collections.Generic;
 using MixedReality.Toolkit;
 using MixedReality.Toolkit.Subsystems;
 using MixedReality.Toolkit.UX;
@@ -8,27 +7,6 @@ using UnityEngine;
 
 public class MainStateHandler : MonoBehaviour
 {
-    private enum TutorialStage 
-    {
-        OpeningHandMenu,
-        PressingStartButton,
-        Walking,
-        AddingNode,
-        Calibrating,
-        FinalWalking,
-        Previewing,
-        Publishing
-    }
-
-    private enum RoutineState
-    {
-        Idle,
-        Calibrating,
-        Recording,
-        Previewing,
-        Publishing
-    }
-    
     public GameObject mainMenu;
     public GameObject mainCamera;
     public AudioSource audioSource;
@@ -53,13 +31,6 @@ public class MainStateHandler : MonoBehaviour
     public float planeSize = 0.05f;
 
     private TextToSpeechSubsystem _tts;
-    
-    // Tutorial variables
-    public static bool DoingTutorial;
-    private TutorialStage _currentTutorialStage = TutorialStage.OpeningHandMenu;
-    
-    // Routine variables
-    private RoutineState _currentRoutineState = RoutineState.Idle;
     
     // Main menu variables
     private bool _isMovingMenuToCenter;
@@ -156,9 +127,9 @@ public class MainStateHandler : MonoBehaviour
         publishButton.gameObject.SetActive(true);
         while (true)
         {
-            if (_currentTutorialStage == TutorialStage.Publishing) break;
-            yield return WaitUntilOrTimeout(() => _currentTutorialStage == TutorialStage.Publishing, 20);
-            if (_currentTutorialStage == TutorialStage.Publishing) break;
+            if (StateMachine.CurrentTutorialStage == StateMachine.TutorialStage.Publishing) break;
+            yield return WaitUntilOrTimeout(() => StateMachine.CurrentTutorialStage == StateMachine.TutorialStage.Publishing, 20);
+            if (StateMachine.CurrentTutorialStage == StateMachine.TutorialStage.Publishing) break;
             Speak("Remember to click the Publish button in the menu in order to complete the tutorial.");
             yield return WaitSpeaking();
         }
@@ -167,17 +138,16 @@ public class MainStateHandler : MonoBehaviour
         Speak("You have completed the tutorial. You can now create more routines by clicking the Clear button in the menu.");
         yield return WaitSpeaking();
 
-        DoingTutorial = false;
-        _currentTutorialStage = TutorialStage.OpeningHandMenu;
+        StateMachine.EndTutorial();
     }
 
     IEnumerator WaitForCompleteRoutineButton()
     {
         while (true)
         {
-            if (_currentTutorialStage == TutorialStage.Previewing) break;
-            yield return WaitUntilOrTimeout(() => _currentTutorialStage == TutorialStage.Previewing, 20);
-            if (_currentTutorialStage == TutorialStage.Previewing) break;
+            if (StateMachine.CurrentTutorialStage == StateMachine.TutorialStage.Previewing) break;
+            yield return WaitUntilOrTimeout(() => StateMachine.CurrentTutorialStage == StateMachine.TutorialStage.Previewing, 20);
+            if (StateMachine.CurrentTutorialStage == StateMachine.TutorialStage.Previewing) break;
             Speak("Remember to click the Save button when you are ready in the menu in order proceed with the tutorial.");
             yield return WaitSpeaking();
         }
@@ -194,9 +164,9 @@ public class MainStateHandler : MonoBehaviour
         Speak("You can continue drawing your path by walking if you want to.");
         while (true)
         {
-            if (_currentTutorialStage == TutorialStage.FinalWalking) break;
-            yield return WaitUntilOrTimeout(() => _currentTutorialStage == TutorialStage.FinalWalking, 15);
-            if (_currentTutorialStage == TutorialStage.FinalWalking) break;
+            if (StateMachine.CurrentTutorialStage == StateMachine.TutorialStage.FinalWalking) break;
+            yield return WaitUntilOrTimeout(() => StateMachine.CurrentTutorialStage == StateMachine.TutorialStage.FinalWalking, 15);
+            if (StateMachine.CurrentTutorialStage == StateMachine.TutorialStage.FinalWalking) break;
             Speak("Remember to click the Add node button in the menu in order to proceed with the tutorial.");
             yield return WaitSpeaking();
         }
@@ -225,7 +195,7 @@ public class MainStateHandler : MonoBehaviour
             Speak("Walk in your room by creating a long enough path. The path is being drawn in your feet.");
             yield return WaitSpeaking();
         }
-        _currentTutorialStage = TutorialStage.AddingNode;
+        StateMachine.TransitionToTutorialStage(StateMachine.TutorialStage.AddingNode);
         StartCoroutine(WaitForAddNodeButton());
     }
 
@@ -235,9 +205,9 @@ public class MainStateHandler : MonoBehaviour
         yield return WaitSpeaking();
         while (true)
         {
-            if (_currentTutorialStage == TutorialStage.Walking) break;
-            yield return WaitUntilOrTimeout(() => _currentTutorialStage == TutorialStage.Walking, 10);
-            if (_currentTutorialStage == TutorialStage.Walking) break;
+            if (StateMachine.CurrentTutorialStage == StateMachine.TutorialStage.Walking) break;
+            yield return WaitUntilOrTimeout(() => StateMachine.CurrentTutorialStage == StateMachine.TutorialStage.Walking, 10);
+            if (StateMachine.CurrentTutorialStage == StateMachine.TutorialStage.Walking) break;
             Speak("Please, walk to the position in which the robot will start, and look at the direction in which the robot will start looking at. Then, click the calibrate button.");
             yield return WaitSpeaking();
         }
@@ -254,9 +224,9 @@ public class MainStateHandler : MonoBehaviour
         startButton.enabled = true;
         while (true)
         {
-            if (_currentTutorialStage == TutorialStage.Calibrating) break;
-            yield return WaitUntilOrTimeout(() => _currentTutorialStage == TutorialStage.Calibrating, 5);
-            if (_currentTutorialStage == TutorialStage.Calibrating) break;
+            if (StateMachine.CurrentTutorialStage == StateMachine.TutorialStage.Calibrating) break;
+            yield return WaitUntilOrTimeout(() => StateMachine.CurrentTutorialStage == StateMachine.TutorialStage.Calibrating, 5);
+            if (StateMachine.CurrentTutorialStage == StateMachine.TutorialStage.Calibrating) break;
             Speak("Click the start button");
             yield return WaitSpeaking();
         }
@@ -271,9 +241,9 @@ public class MainStateHandler : MonoBehaviour
     {
         while (true)
         {
-            if (_currentTutorialStage == TutorialStage.PressingStartButton) break;
-            yield return WaitUntilOrTimeout(() => _currentTutorialStage == TutorialStage.PressingStartButton, 5);
-            if (_currentTutorialStage == TutorialStage.PressingStartButton) break;
+            if (StateMachine.CurrentTutorialStage == StateMachine.TutorialStage.PressingStartButton) break;
+            yield return WaitUntilOrTimeout(() => StateMachine.CurrentTutorialStage == StateMachine.TutorialStage.PressingStartButton, 5);
+            if (StateMachine.CurrentTutorialStage == StateMachine.TutorialStage.PressingStartButton) break;
             Speak("To access the menu, look at your hand's palm.");
             yield return WaitSpeaking();
         }
@@ -295,7 +265,7 @@ public class MainStateHandler : MonoBehaviour
 
     public void StartTutorial()
     {
-        DoingTutorial = true;
+        StateMachine.StartTutorial();
         startButton.enabled = false;
         nodeButton.enabled = false;
         saveButton.enabled = false;
@@ -304,32 +274,24 @@ public class MainStateHandler : MonoBehaviour
 
     public void LookingAtHand()
     {
-        if (!DoingTutorial) return;
-        if (_currentTutorialStage != TutorialStage.OpeningHandMenu) return;
-        _currentTutorialStage = TutorialStage.PressingStartButton;
+        if (!StateMachine.DoingTutorial) return;
+        StateMachine.OnHandMenuOpened();
     }
 
 
     void StartButtonPressed()
     {
-        if (_currentRoutineState != RoutineState.Idle) return; // Can you start something already started? :)
-        _currentRoutineState = RoutineState.Calibrating;
+        if (!StateMachine.CanStartCalibration()) return;
         
-        // Tutorial handling
-        if (!DoingTutorial) {
-            calibrationMenu.SetActive(true);
-            return; // Why to handle tutorial if not doing it?
-        }
-        
-        if (_currentTutorialStage != TutorialStage.PressingStartButton) return;
-        _currentTutorialStage = TutorialStage.Calibrating;
+        StateMachine.StartCalibration();
+        calibrationMenu.SetActive(true);
     }
 
     void CalibrateButtonPressed()
     {
-        if (_currentRoutineState != RoutineState.Calibrating) return; // Can you calibrate something not in calibration?
+        if (!StateMachine.CanCalibrate()) return;
         
-        _currentRoutineState = RoutineState.Recording;
+        StateMachine.StartRecording();
         
         PathsController.SetReference(mainCamera.transform.position, mainCamera.transform.rotation);
         
@@ -340,63 +302,49 @@ public class MainStateHandler : MonoBehaviour
         PathsController.Activate();
         PathsController.AddNode(1.5f);
         
-        // Tutorial handling
-        if (!DoingTutorial)
+        if (!StateMachine.DoingTutorial)
         {
             nodeButton.enabled = true;
-            return;
-        } // Why to handle tutorial if not doing it?
-        if (_currentTutorialStage != TutorialStage.Calibrating) return;
-        _currentTutorialStage = TutorialStage.Walking;
+        }
     }
 
     void AddNodeButtonPressed()
     {
-        Debug.Log("Added node ... " + _currentRoutineState);
-        if (_currentRoutineState != RoutineState.Recording) return; // Can you add a node if not recording? :v
+        Debug.Log("Added node ... " + StateMachine.CurrentRoutineState);
+        if (!StateMachine.CanRecord()) return;
         
         PathsController.AddNode();
         
-        // Tutorial handling
-        if (!DoingTutorial) return; // Why to handle tutorial if not doing it?
-        
-        if (_currentTutorialStage != TutorialStage.AddingNode) return;
-        _currentTutorialStage = TutorialStage.FinalWalking;
+        if (StateMachine.DoingTutorial)
+        {
+            StateMachine.OnNodeAdded();
+        }
     }
 
 
     void SaveButtonPressed()
     {
-        if (_currentRoutineState != RoutineState.Recording) return; // Can you save... nothing? :0
+        if (!StateMachine.CanRecord()) return;
         
         PathsController.AddNode(1.3f);
         PathsController.Deactivate();
         saveButton.enabled = false;
         saveButton.gameObject.SetActive(false);
         
-        _currentRoutineState = RoutineState.Previewing;
+        StateMachine.StartPreviewing();
         
-        // Tutorial handling
-        if (!DoingTutorial)
+        if (!StateMachine.DoingTutorial)
         {
             publishButton.enabled = true;
             publishButton.gameObject.SetActive(true);
-            return;
-        } // Why to handle tutorial if not doing it? :D
-        
-        if (_currentTutorialStage != TutorialStage.FinalWalking) return;
-        _currentTutorialStage = TutorialStage.Previewing;
+        }
     }
 
 
     void PublishButtonPressed()
     {
-        // Can you publish if not previewing?
-        // Actually you can, but I do not care. :D
-        if (_currentRoutineState != RoutineState.Previewing) return;
+        if (!StateMachine.CanPreview()) return;
         
-        // TODO: Use the API Service
-
         var path = PathsController.CurrentPath();
         var path2 = "";
         for (int i = 0; i < path.Item1.Count; i++)
@@ -411,22 +359,18 @@ public class MainStateHandler : MonoBehaviour
             line = path.Item1
         };
         StartCoroutine(ApiService.PostRoutine(routine));
-        _currentRoutineState = RoutineState.Publishing;
+        
+        StateMachine.StartPublishing();
+        
         restoreButton.enabled = true;
         restoreButton.gameObject.SetActive(true);
-        
-        // Tutorial handling
-        if (!DoingTutorial) return; // Why to handle tutorial if not doing it? :D
-        
-        if (_currentTutorialStage != TutorialStage.Previewing) return;
-        _currentTutorialStage = TutorialStage.Publishing;
     }
 
     void RestoreButtonPressed()
     {
-        if (_currentRoutineState != RoutineState.Publishing) return;
+        if (!StateMachine.CanPublish()) return;
 
-        _currentRoutineState = RoutineState.Idle;
+        StateMachine.RestoreToIdle();
         restoreButton.enabled = false;
         restoreButton.gameObject.SetActive(false);
         publishButton.enabled = false;
