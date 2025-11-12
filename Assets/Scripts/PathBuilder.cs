@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using Unity.VisualScripting;
 using UnityEngine;
 
-public class PathsController
+public class PathBuilder
 {
     private static Vector3 _transformPosition;
     private static Quaternion _transformRotation;
@@ -114,7 +114,7 @@ public class PathsController
     public static void AddNode(float sizeMultiplier = 1.0f)
     {
         if (!_activated) return;
-        var (nodeIdx, position) = Compute(true);
+        var (nodeIdx, position) = Update(true);
         GameObject node = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
         node.transform.localScale = new Vector3(_planeSize * 3 * sizeMultiplier, _planeSize * 0.1f * sizeMultiplier, _planeSize * 3 * sizeMultiplier);
         node.transform.position = position;
@@ -163,7 +163,7 @@ public class PathsController
         return (_linePositions.Count - 1, newPoint);
     }
     
-    public static (int, Vector3) Compute(bool addingNode = false)
+    public static (int, Vector3) Update(bool addingNode = false)
     {
         if (!_activated)
         {
