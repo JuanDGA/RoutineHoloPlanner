@@ -8,34 +8,34 @@ using UnityEngine;
     {
         public enum State { Idle, Calibrating, Recording, Tweaking, Previewing, Publishing }
         public enum Operation { StartRoutine, Calibrate, EndRoutine, CancelRoutine, AddNode, Preview, Tweak, Publish }
-        
-    
-        public State CurrentState { get; private set; } = State.Idle;
+
+
+        private State _currentState = State.Idle;
         public event Action OnDeltaFunction;
-        private Dictionary<Operation, PressableButton> _buttonsByOperation = new();
+        private readonly Dictionary<Operation, PressableButton> _buttonsByOperation = new();
         private bool _validated;
     
-        public bool CanTransitionTo(State newState, Operation by)
+        private bool CanTransitionTo(State newState, Operation by)
         {
             if (!_validated) 
                 throw new InvalidOperationException("State machine transitions have not been validated yet.");
-            return ValidTransitions[CurrentState].Contains(newState) && ValidOperations[CurrentState].Contains(by);
+            return ValidTransitions[_currentState].Contains(newState) && ValidOperations[_currentState].Contains(by);
         }
         
-        public bool CanPerform(Operation by)
+        private bool CanPerform(Operation by)
         {
             if (!_validated) 
                 throw new InvalidOperationException("State machine transitions have not been validated yet.");
-            return ValidOperations[CurrentState].Contains(by);
+            return ValidOperations[_currentState].Contains(by);
         }
-        
-        public void CallDelta(Operation by)
+
+        private void CallDelta(Operation by)
         {
             if (!_validated) 
                 throw new InvalidOperationException("State machine transitions have not been validated yet.");
             
             if (!CanPerform(by)) 
-                throw new InvalidOperationException($"Cannot perform operation {by} from state {CurrentState}");
+                throw new InvalidOperationException($"Cannot perform operation {by} from state {_currentState}");
             
             OnDeltaFunction?.Invoke();
         }
@@ -44,11 +44,11 @@ using UnityEngine;
         {
             if (!_validated) 
                 throw new InvalidOperationException("State machine transitions have not been validated yet.");
-            Debug.Log($"Transitioning to {newState} from {CurrentState} by {by}");
+            Debug.Log($"Transitioning to {newState} from {_currentState} by {by}");
             if (!CanTransitionTo(newState, by)) 
-                throw new InvalidOperationException($"Cannot transition from {CurrentState} to {newState}");
+                throw new InvalidOperationException($"Cannot transition from {_currentState} to {newState}");
             
-            CurrentState = newState;
+            _currentState = newState;
             _SwitchButtons();
         }
         
@@ -69,9 +69,9 @@ using UnityEngine;
 
         public void Finish()
         {
-            if (CurrentState != State.Publishing)
+            if (_currentState != State.Publishing)
                 throw new InvalidOperationException("Can only finish routine from Publishing state.");
-            CurrentState = State.Idle;
+            _currentState = State.Idle;
             _SwitchButtons();
         }
 
@@ -91,7 +91,7 @@ using UnityEngine;
                 throw new InvalidOperationException("State machine transitions have not been validated yet.");
             foreach (var (operation, button) in _buttonsByOperation)
             {
-                button.gameObject.SetActive(ValidOperations[CurrentState].Contains(operation));
+                button.gameObject.SetActive(ValidOperations[_currentState].Contains(operation));
             }
         }
     
