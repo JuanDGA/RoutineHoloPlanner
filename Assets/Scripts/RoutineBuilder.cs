@@ -11,7 +11,7 @@ using UnityEngine;
 
 
         private State _currentState = State.Idle;
-        public event Action OnDeltaFunction;
+        public event Action<Operation> OnDeltaFunction;
         private readonly Dictionary<Operation, PressableButton> _buttonsByOperation = new();
         private bool _validated;
     
@@ -37,7 +37,7 @@ using UnityEngine;
             if (!CanPerform(by)) 
                 throw new InvalidOperationException($"Cannot perform operation {by} from state {_currentState}");
             
-            OnDeltaFunction?.Invoke();
+            OnDeltaFunction?.Invoke(by);
         }
     
         public void TransitionTo(State newState, Operation by)

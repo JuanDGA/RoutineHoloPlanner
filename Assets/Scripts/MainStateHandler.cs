@@ -56,14 +56,7 @@ public class MainStateHandler : MonoBehaviour
         _routineBuilder.AssignButton(RoutineBuilder.Operation.CancelRoutine, cancelButton);
         
         // Operation Handlers
-        _routineBuilder.OnDeltaFunction += StartRoutineHandler;
-        _routineBuilder.OnDeltaFunction += CalibrateHandler;
-        _routineBuilder.OnDeltaFunction += AddNodeHandler;
-        _routineBuilder.OnDeltaFunction += EndRoutineHandler;
-        _routineBuilder.OnDeltaFunction += PreviewHandler;
-        _routineBuilder.OnDeltaFunction += TweakHandler;
-        _routineBuilder.OnDeltaFunction += PublishHandler;
-        _routineBuilder.OnDeltaFunction += CancelRoutineHandler;
+        _routineBuilder.OnDeltaFunction += HandleOperation;
     }
     
     void OnDestroy()
@@ -83,6 +76,37 @@ public class MainStateHandler : MonoBehaviour
     {
         if (mainMenu.activeSelf) UpdateMenuPosition(mainMenu);
         if (calibrationMenu.activeSelf) UpdateMenuPosition(calibrationMenu);
+    }
+    
+    void HandleOperation(RoutineBuilder.Operation operation)
+    {
+        switch (operation)
+        {
+            case RoutineBuilder.Operation.StartRoutine:
+                StartRoutineHandler();
+                break;
+            case RoutineBuilder.Operation.Calibrate:
+                CalibrateHandler();
+                break;
+            case RoutineBuilder.Operation.AddNode:
+                AddNodeHandler();
+                break;
+            case RoutineBuilder.Operation.EndRoutine:
+                EndRoutineHandler();
+                break;
+            case RoutineBuilder.Operation.Preview:
+                PreviewHandler();
+                break;
+            case RoutineBuilder.Operation.Tweak:
+                TweakHandler();
+                break;
+            case RoutineBuilder.Operation.Publish:
+                PublishHandler();
+                break;
+            case RoutineBuilder.Operation.CancelRoutine:
+                CancelRoutineHandler();
+                break;
+        }
     }
 
     void StartRoutineHandler()
