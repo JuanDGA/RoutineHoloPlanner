@@ -30,8 +30,8 @@ public class MainStateHandler : MonoBehaviour
 
     [Header("Routine Visualization")]
     public GameObject pepperRobot;
-    public SystemLanguage voiceLanguage;
 
+    private readonly PepperVisualization _pepperVisualization = new();
     private readonly RoutineBuilder _routineBuilder = new();
     private TextToSpeechSubsystem _tts;
     
@@ -40,6 +40,10 @@ public class MainStateHandler : MonoBehaviour
     
     void Start()
     {
+        // Initializations
+        pepperRobot.transform.position = mainCamera.transform.position;
+        pepperRobot.transform.rotation = mainCamera.transform.rotation;
+        pepperRobot.SetActive(false);
         PathBuilder.SetUp(mainCamera, pathsMaterial, planeSize, linesParent, lastStepDistance, nodeMenuPrefab);
         
         mainMenu.transform.position = mainCamera.transform.position + mainCamera.transform.forward;
@@ -74,6 +78,7 @@ public class MainStateHandler : MonoBehaviour
 
     private void FixedUpdate()
     {
+        _pepperVisualization.UpdateVisualization(Time.fixedDeltaTime, pepperRobot);
         if (mainMenu.activeSelf) UpdateMenuPosition(mainMenu);
         if (calibrationMenu.activeSelf) UpdateMenuPosition(calibrationMenu);
     }
@@ -118,6 +123,7 @@ public class MainStateHandler : MonoBehaviour
     void CalibrateHandler()
     {
         PathBuilder.SetReference(mainCamera.transform.position, mainCamera.transform.rotation);
+        _pepperVisualization.SetReference(mainCamera.transform.position, mainCamera.transform.rotation);
         calibrationMenu.SetActive(false);
         PathBuilder.Activate();
         PathBuilder.AddNode(1.5f);
@@ -139,16 +145,22 @@ public class MainStateHandler : MonoBehaviour
     
     void PreviewHandler()
     {
+        pepperRobot.SetActive(true);
+        _pepperVisualization.StartVisualization(PathBuilder.CurrentPath().Item1, pepperRobot);
         _routineBuilder.TransitionTo(RoutineBuilder.State.Previewing, RoutineBuilder.Operation.Preview);
     }
     
     void TweakHandler()
     {
+        _pepperVisualization.StopVisualization();
+        pepperRobot.SetActive(false);
         _routineBuilder.TransitionTo(RoutineBuilder.State.Tweaking, RoutineBuilder.Operation.Tweak);
     }
     
     void PublishHandler()
     {
+        pepperRobot.SetActive(false);
+        _pepperVisualization.StopVisualization();
         var (points, nodes) = PathBuilder.CurrentPath();
         var path2 = "";
         foreach (var point in points)
@@ -169,7 +181,10 @@ public class MainStateHandler : MonoBehaviour
 
     void CancelRoutineHandler()
     {
+        _pepperVisualization.StopVisualization();
+        pepperRobot.SetActive(false);
         PathBuilder.Restore();
+        _routineBuilder.TransitionTo(RoutineBuilder.State.Idle, RoutineBuilder.Operation.CancelRoutine);
     }
 
 
