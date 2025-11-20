@@ -38,18 +38,29 @@ public class PathBuilder
 
     public static void Restore()
     {
-        _currentLine.gameObject.SetActive(false);
+        // Properly clean up the current line
+        if (_currentLine != null)
+        {
+            GameObject.Destroy(_currentLine.gameObject);
+            _currentLine = null;
+        }
+        
+        // Clean up all node menus and objects
         for (int i = 0; i < _nodesMenu.Count; i++)
         {
             GameObject nodeMenu = _nodesMenu[i];
             GameObject nodeObject = _nodeObjects[i];
-            nodeMenu.SetActive(false);
-            nodeObject.SetActive(false);
+            if (nodeMenu != null) GameObject.Destroy(nodeMenu);
+            if (nodeObject != null) GameObject.Destroy(nodeObject);
         }
 
+        // Reset all lists and state
         _nodesMenu = new List<GameObject>();
         _nodeObjects = new List<GameObject>();
         _nodes = new List<int>();
+        _linePositions = new List<Vector3>();
+        _activated = false;
+        _lastPos = Vector3.zero;
     }
 
     public static float CurrentPathDistance(float limit = Single.PositiveInfinity)

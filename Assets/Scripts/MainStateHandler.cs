@@ -145,6 +145,9 @@ public class MainStateHandler : MonoBehaviour
 
     void StartRoutineHandler()
     {
+        // Ensure clean state before starting a new routine
+        PathBuilder.Restore();
+        
         mainMenu.SetActive(false);
         _routineBuilder.TransitionTo(RoutineBuilder.State.Calibrating, RoutineBuilder.Operation.StartRoutine);
         calibrationMenu.SetActive(true);
@@ -206,17 +209,26 @@ public class MainStateHandler : MonoBehaviour
         };
         
         StartCoroutine(ApiService.PostRoutine(routine));
+        
+        // Transition to Publishing state, keeping the routine visible
+        _routineBuilder.TransitionTo(RoutineBuilder.State.Publishing, RoutineBuilder.Operation.Publish);
     }
 
     void CancelRoutineHandler()
     {
+        // Stop any ongoing visualization
         _pepperVisualization.StopVisualization();
         pepperRobot.SetActive(false);
+        
+        // Clean up all path data and reset PathBuilder
         PathBuilder.Restore();
+        
+        // Transition back to Idle state
         _routineBuilder.TransitionTo(RoutineBuilder.State.Idle, RoutineBuilder.Operation.CancelRoutine);
+        
+        // Show main menu
         mainMenu.SetActive(true);
     }
-
 
     private void UpdateMenuPosition(GameObject menu)
     {

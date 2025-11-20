@@ -112,6 +112,7 @@ using UnityEngine;
             { State.Recording, new HashSet<Operation> { Operation.AddNode, Operation.EndRoutine, Operation.CancelRoutine } },
             { State.Tweaking, new HashSet<Operation> { Operation.Preview, Operation.Publish, Operation.CancelRoutine } },
             { State.Previewing, new HashSet<Operation> { Operation.Tweak, Operation.Publish, Operation.CancelRoutine } },
+            { State.Publishing, new HashSet<Operation> { Operation.CancelRoutine } }
         };
     }
     
