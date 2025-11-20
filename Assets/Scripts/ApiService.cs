@@ -6,7 +6,10 @@ using UnityEngine.Networking;
 
 public class ApiService
 {
-    private static readonly string _ApiUrl = "http://157.253.192.192:8080/api";
+    private static readonly string _ApiUrl = "https://routineholoplannerworker.neoventix.workers.dev/api/data";
+    
+    public static event Action<List<Routine>> OnRoutinesReceived;
+    public static event Action<String> OnRequestError;
     
     [Serializable]
     public class Node
@@ -33,7 +36,7 @@ public class ApiService
     {
         string jsonData = JsonUtility.ToJson(routine);
     
-        using (UnityWebRequest www = UnityWebRequest.PostWwwForm(_ApiUrl + "/walk", ""))
+        using (UnityWebRequest www = UnityWebRequest.PostWwwForm(_ApiUrl, ""))
         {
             byte[] bodyRaw = System.Text.Encoding.UTF8.GetBytes(jsonData);
             www.uploadHandler = new UploadHandlerRaw(bodyRaw);
@@ -44,7 +47,9 @@ public class ApiService
         
             if (www.result != UnityWebRequest.Result.Success)
             {
-                Debug.LogError("API Post Error: " + www.error + " - Response: " + www.downloadHandler.text);
+                String message = "API Post Error: " + www.error + " - Response: " + www.downloadHandler.text;
+                OnRequestError?.Invoke(message);
+                Debug.LogError(message);
                 yield break;
             }
         
@@ -52,4 +57,42 @@ public class ApiService
         }
     }
 
+    public static IEnumerator GetRoutines()
+    {
+        using (UnityWebRequest www = UnityWebRequest.Get(_ApiUrl))
+        {
+            www.downloadHandler = new DownloadHandlerBuffer();
+        
+            yield return www.SendWebRequest();
+        
+            if (www.result != UnityWebRequest.Result.Success)
+            {
+                String message = "API Post Error: " + www.error + " - Response: " + www.downloadHandler.text;
+                OnRequestError?.Invoke(message);
+                Debug.LogError(message);
+                yield break;
+            }
+
+            try
+            {
+                Wrapper wrapper = JsonUtility.FromJson<Wrapper>(www.downloadHandler.text);
+                
+                OnRoutinesReceived?.Invoke(wrapper.routines);
+
+                Debug.Log("Routine posted successfully: " + www.downloadHandler.text);
+            }
+            catch (Exception e)
+            {
+                String message = "API Response Parsing Error: " + e.Message + " - Response: " + www.downloadHandler.text;
+                OnRequestError?.Invoke(message);
+                Debug.LogError(message);
+            }
+        }
+    }
+
+    public static void Clean()
+    {
+        OnRequestError = null;
+        OnRoutinesReceived = null;
+    }
 }

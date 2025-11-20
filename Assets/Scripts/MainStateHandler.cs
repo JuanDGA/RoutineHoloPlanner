@@ -5,8 +5,8 @@ using UnityEngine;
 public class MainStateHandler : MonoBehaviour
 {
     public GameObject mainMenu;
+    public GameObject messageMenu;
     public GameObject mainCamera;
-    public AudioSource audioSource;
     
     [Header("Calibration menu")]
     public GameObject calibrationMenu;
