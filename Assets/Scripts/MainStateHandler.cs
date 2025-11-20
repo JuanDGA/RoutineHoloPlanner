@@ -1,10 +1,14 @@
+using System.Collections.Generic;
 using MixedReality.Toolkit.Subsystems;
 using MixedReality.Toolkit.UX;
+using MixedReality.Toolkit.UX.Experimental;
+using TMPro;
 using UnityEngine;
 
 public class MainStateHandler : MonoBehaviour
 {
     public GameObject mainMenu;
+    public VirtualizedScrollRectList list;
     public GameObject messageMenu;
     public GameObject mainCamera;
     
@@ -38,8 +42,25 @@ public class MainStateHandler : MonoBehaviour
     // Main menu variables
     private bool _isMovingMenuToCenter;
     
+    private List<ApiService.Routine> _routines = new();
+    
     void Start()
     {
+        list.SetItemCount(0);
+        list.OnVisible = (o, i) =>
+        {
+            o.GetComponentInChildren<TextMeshProUGUI>().text = _routines[i].routine_name;
+            Debug.Log("Element visible: " + i);
+        };
+
+        ApiService.OnRoutinesReceived += (routines) =>
+        {
+            _routines = routines;
+            list.SetItemCount(routines.Count);
+        };
+
+        StartCoroutine(ApiService.GetRoutines());
+        
         // Initializations
         pepperRobot.transform.position = mainCamera.transform.position;
         pepperRobot.transform.rotation = mainCamera.transform.rotation;
@@ -48,6 +69,7 @@ public class MainStateHandler : MonoBehaviour
         
         mainMenu.transform.position = mainCamera.transform.position + mainCamera.transform.forward;
         mainMenu.transform.rotation = mainCamera.transform.rotation;
+        mainMenu.SetActive(true); // Show main menu in Idle state
         
         // Hand Menu Buttons
         _routineBuilder.AssignButton(RoutineBuilder.Operation.StartRoutine, startButton);
@@ -116,6 +138,7 @@ public class MainStateHandler : MonoBehaviour
 
     void StartRoutineHandler()
     {
+        mainMenu.SetActive(false);
         _routineBuilder.TransitionTo(RoutineBuilder.State.Calibrating, RoutineBuilder.Operation.StartRoutine);
         calibrationMenu.SetActive(true);
     }
@@ -176,7 +199,6 @@ public class MainStateHandler : MonoBehaviour
         };
         
         StartCoroutine(ApiService.PostRoutine(routine));
-        _routineBuilder.Finish();
     }
 
     void CancelRoutineHandler()
@@ -185,6 +207,7 @@ public class MainStateHandler : MonoBehaviour
         pepperRobot.SetActive(false);
         PathBuilder.Restore();
         _routineBuilder.TransitionTo(RoutineBuilder.State.Idle, RoutineBuilder.Operation.CancelRoutine);
+        mainMenu.SetActive(true);
     }
 
 

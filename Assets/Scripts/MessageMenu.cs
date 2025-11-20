@@ -17,6 +17,7 @@ public class MessageMenu : MonoBehaviour
         
         _acknowledgeButton.OnClicked.AddListener(() =>
         {
+            _text.text = "";
             gameObject.SetActive(false);
         });
     }

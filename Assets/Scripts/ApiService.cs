@@ -3,6 +3,7 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.Networking;
+using UnityEngine.Serialization;
 
 public class ApiService
 {
@@ -22,6 +23,7 @@ public class ApiService
     [Serializable]
     public class Routine
     {
+        public string routine_name;
         public List<Node> nodes;
         public List<Vector3> line;
     }
