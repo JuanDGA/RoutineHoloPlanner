@@ -9,7 +9,7 @@ public class MainStateHandler : MonoBehaviour
 {
     public GameObject mainMenu;
     public VirtualizedScrollRectList list;
-    public GameObject messageMenu;
+    public MessageMenu messageMenu;
     public GameObject mainCamera;
     
     [Header("Calibration menu")]
@@ -59,6 +59,12 @@ public class MainStateHandler : MonoBehaviour
             list.SetItemCount(routines.Count);
         };
 
+        ApiService.OnRequestError += (error) =>
+        {
+            messageMenu.SetMessage(error);
+            messageMenu.gameObject.SetActive(true);
+        };
+
         StartCoroutine(ApiService.GetRoutines());
         
         // Initializations
@@ -103,6 +109,7 @@ public class MainStateHandler : MonoBehaviour
         _pepperVisualization.UpdateVisualization(Time.fixedDeltaTime, pepperRobot);
         if (mainMenu.activeSelf) UpdateMenuPosition(mainMenu);
         if (calibrationMenu.activeSelf) UpdateMenuPosition(calibrationMenu);
+        if (messageMenu.gameObject.activeSelf) UpdateMenuPosition(messageMenu.gameObject);
     }
     
     void HandleOperation(RoutineBuilder.Operation operation)
