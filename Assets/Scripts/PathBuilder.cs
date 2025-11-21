@@ -160,6 +160,106 @@ public class PathBuilder
         _transformRotation = transformRotation;
     }
 
+    public static void LoadRoutine(List<Vector3> localPositions, List<ApiService.Node> nodes)
+    {
+        // Validate input
+        if (localPositions == null || localPositions.Count == 0)
+        {
+            Debug.LogError("LoadRoutine: localPositions is null or empty!");
+            return;
+        }
+        
+        if (nodes == null)
+        {
+            Debug.LogWarning("LoadRoutine: nodes is null, creating empty list");
+            nodes = new List<ApiService.Node>();
+        }
+        
+        Debug.Log($"LoadRoutine called with {localPositions.Count} positions and {nodes.Count} nodes");
+        
+        // Clear any existing data
+        Restore();
+        
+        // Initialize lists
+        _linePositions = new List<Vector3>();
+        _nodes = new List<int>();
+        _nodesMenu = new List<GameObject>();
+        _nodeObjects = new List<GameObject>();
+        
+        // Set current Y based on first position or camera
+        if (localPositions.Count > 0)
+        {
+            Vector3 firstWorldPos = _transformRotation * localPositions[0] + _transformPosition;
+            _currentY = firstWorldPos.y;
+        }
+        else
+        {
+            _currentY = GetPathRelativePos().y;
+        }
+        
+        // Create the line renderer
+        _currentLine = new GameObject("LoadedRoutineLine").AddComponent<LineRenderer>();
+        _currentLine.material = _pathsMaterial;
+        _currentLine.startWidth = _planeSize;
+        _currentLine.endWidth = _planeSize;
+        _currentLine.transform.SetParent(_linesParent.transform);
+        
+        Debug.Log($"Created line renderer: {_currentLine.name}");
+        
+        // Convert local positions back to world positions and add them
+        foreach (var localPos in localPositions)
+        {
+            // Apply rotation first, then translation
+            Vector3 worldPosition = _transformRotation * localPos + _transformPosition;
+            _linePositions.Add(worldPosition);
+        }
+        
+        Debug.Log($"Converted {_linePositions.Count} positions to world space");
+        
+        // Set the line positions
+        _currentLine.positionCount = _linePositions.Count;
+        _currentLine.SetPositions(_linePositions.ToArray());
+        
+        Debug.Log($"Set {_currentLine.positionCount} positions on line renderer");
+        
+        // Create nodes
+        foreach (var nodeData in nodes)
+        {
+            if (nodeData.index >= 0 && nodeData.index < _linePositions.Count)
+            {
+                Vector3 nodePosition = _linePositions[nodeData.index];
+                
+                // Create node visual
+                GameObject node = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
+                node.name = $"LoadedNode_{nodeData.index}";
+                node.transform.localScale = new Vector3(_planeSize * 3 * 1.5f, _planeSize * 0.1f * 1.5f, _planeSize * 3 * 1.5f);
+                node.transform.position = nodePosition;
+                node.GetComponent<Renderer>().sharedMaterial = _pathsMaterial;
+                node.transform.SetParent(_linesParent.transform);
+                _nodeObjects.Add(node);
+                
+                Debug.Log($"Created node at index {nodeData.index}, position {nodePosition}");
+                
+                // Create node menu
+                GameObject nodeMenu = MainStateHandler.Instantiate(_nodeMenuPrefab, nodePosition + Vector3.up * 1.5f, Quaternion.identity);
+                nodeMenu.GetComponent<NodeMenu>().Text = nodeData.text;
+                nodeMenu.GetComponent<NodeMenu>().Animation = nodeData.animation;
+                nodeMenu.SetActive(true);
+                _nodesMenu.Add(nodeMenu);
+                
+                _nodes.Add(nodeData.index);
+            }
+            else
+            {
+                Debug.LogWarning($"Node index {nodeData.index} is out of range (0-{_linePositions.Count - 1})");
+            }
+        }
+        
+        Debug.Log($"LoadRoutine completed: {_nodeObjects.Count} nodes created");
+        
+        _activated = false; // Not in recording mode
+    }
+
     private static Vector3 GetPathRelativePos()
     {
         return _playerCamera.transform.position + Vector3.down * 1.7f;

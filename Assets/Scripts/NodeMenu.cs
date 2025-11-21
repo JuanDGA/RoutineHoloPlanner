@@ -4,8 +4,8 @@ using UnityEngine;
 
 public class NodeMenu : MonoBehaviour
 {
-    public string Text { get; private set; }
-    public string Animation { get; private set; }
+    public string Text { get; set; }
+    public string Animation { get; set; }
     
     void Start()
     {

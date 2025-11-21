@@ -6,7 +6,7 @@ using UnityEngine;
 // An State Machine to manage the Routine Building process
     public class RoutineBuilder
     {
-        public enum State { Idle, Calibrating, Recording, Tweaking, Previewing, Publishing }
+        public enum State { Idle, Calibrating, Recording, Tweaking, Previewing, Publishing, Loading }
         public enum Operation { StartRoutine, Calibrate, EndRoutine, CancelRoutine, AddNode, Preview, Tweak, Publish }
 
 
@@ -48,6 +48,20 @@ using UnityEngine;
             if (!CanTransitionTo(newState, by)) 
                 throw new InvalidOperationException($"Cannot transition from {_currentState} to {newState}");
             
+            _currentState = newState;
+            _SwitchButtons();
+        }
+        
+        // Direct transition without operation validation (for programmatic state changes like loading routines)
+        public void TransitionToDirectly(State newState)
+        {
+            if (!_validated) 
+                throw new InvalidOperationException("State machine transitions have not been validated yet.");
+            
+            if (!ValidTransitions[_currentState].Contains(newState))
+                throw new InvalidOperationException($"Cannot transition from {_currentState} to {newState}");
+            
+            Debug.Log($"Transitioning directly to {newState} from {_currentState}");
             _currentState = newState;
             _SwitchButtons();
         }
@@ -97,12 +111,13 @@ using UnityEngine;
     
         private static readonly Dictionary<State, HashSet<State>> ValidTransitions = new()
         {
-            { State.Idle, new HashSet<State> { State.Calibrating } },
+            { State.Idle, new HashSet<State> { State.Calibrating, State.Loading } },
             { State.Calibrating, new HashSet<State> { State.Recording, State.Idle } },
             { State.Recording, new HashSet<State> { State.Tweaking, State.Idle } },
             { State.Tweaking, new HashSet<State> { State.Previewing, State.Publishing, State.Idle } },
             { State.Previewing, new HashSet<State> { State.Tweaking, State.Publishing, State.Idle } },
-            { State.Publishing, new HashSet<State> { State.Idle } }
+            { State.Publishing, new HashSet<State> { State.Idle } },
+            { State.Loading, new HashSet<State> { State.Tweaking, State.Idle } }
         };
         
         private static readonly Dictionary<State, HashSet<Operation>> ValidOperations = new()
@@ -111,8 +126,8 @@ using UnityEngine;
             { State.Calibrating, new HashSet<Operation> { Operation.Calibrate, Operation.CancelRoutine } },
             { State.Recording, new HashSet<Operation> { Operation.AddNode, Operation.EndRoutine, Operation.CancelRoutine } },
             { State.Tweaking, new HashSet<Operation> { Operation.Preview, Operation.Publish, Operation.CancelRoutine } },
-            { State.Previewing, new HashSet<Operation> { Operation.Tweak, Operation.Publish, Operation.CancelRoutine } },
-            { State.Publishing, new HashSet<Operation> { Operation.CancelRoutine } }
+            { State.Publishing, new HashSet<Operation> { Operation.CancelRoutine } },
+            { State.Loading, new HashSet<Operation> { Operation.Calibrate, Operation.CancelRoutine } },
         };
     }
     

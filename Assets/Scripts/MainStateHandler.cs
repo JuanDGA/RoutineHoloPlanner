@@ -43,6 +43,7 @@ public class MainStateHandler : MonoBehaviour
     private bool _isMovingMenuToCenter;
     
     private List<ApiService.Routine> _routines = new();
+    private ApiService.Routine _loadedRoutine;
     
     void Start()
     {
@@ -50,7 +51,12 @@ public class MainStateHandler : MonoBehaviour
         list.OnVisible = (o, i) =>
         {
             o.GetComponentInChildren<TextMeshProUGUI>().text = _routines[i].routine_name;
-            Debug.Log("Element visible: " + i);
+            o.GetComponent<PressableButton>().OnClicked.AddListener(() => LoadRoutine(i));
+        };
+
+        list.OnInvisible = (o, i) =>
+        {
+            o.GetComponent<PressableButton>().OnClicked.RemoveAllListeners();
         };
 
         ApiService.OnRoutinesReceived += (routines) =>
@@ -102,16 +108,41 @@ public class MainStateHandler : MonoBehaviour
     void Update()
     {
         PathBuilder.Update();
+        
+        // Update menu position to follow camera when visible
+        if (mainMenu.activeSelf)
+        {
+            UpdateMenuPosition(mainMenu);
+        }
+        
+        if (calibrationMenu.activeSelf)
+        {
+            UpdateMenuPosition(calibrationMenu);
+        }
     }
 
-    private void FixedUpdate()
+    void LoadRoutine(int index)
     {
-        _pepperVisualization.UpdateVisualization(Time.fixedDeltaTime, pepperRobot);
-        if (mainMenu.activeSelf) UpdateMenuPosition(mainMenu);
-        if (calibrationMenu.activeSelf) UpdateMenuPosition(calibrationMenu);
-        if (messageMenu.gameObject.activeSelf) UpdateMenuPosition(messageMenu.gameObject);
+        if (index < 0 || index >= _routines.Count) return;
+        
+        var routine = _routines[index];
+        
+        // Ensure clean state before loading
+        PathBuilder.Restore();
+        _pepperVisualization.StopVisualization();
+        pepperRobot.SetActive(false);
+        
+        // Hide main menu and show calibration menu
+        mainMenu.SetActive(false);
+        calibrationMenu.SetActive(true);
+        
+        // Store the routine to load after calibration
+        _loadedRoutine = routine;
+        
+        // Transition to Loading state - this will show only Calibrate and Cancel buttons
+        _routineBuilder.TransitionToDirectly(RoutineBuilder.State.Loading);
     }
-    
+
     void HandleOperation(RoutineBuilder.Operation operation)
     {
         switch (operation)
@@ -158,9 +189,26 @@ public class MainStateHandler : MonoBehaviour
         PathBuilder.SetReference(mainCamera.transform.position, mainCamera.transform.rotation);
         _pepperVisualization.SetReference(mainCamera.transform.position, mainCamera.transform.rotation);
         calibrationMenu.SetActive(false);
-        PathBuilder.Activate();
-        PathBuilder.AddNode(1.5f);
-        _routineBuilder.TransitionTo(RoutineBuilder.State.Recording, RoutineBuilder.Operation.Calibrate);
+        
+        // Check if we're loading an existing routine or creating a new one
+        if (_loadedRoutine != null)
+        {
+            Debug.Log($"Loading routine: {_loadedRoutine.routine_name} with {_loadedRoutine.line?.Count ?? 0} points and {_loadedRoutine.nodes?.Count ?? 0} nodes");
+            
+            // Load the routine with the calibrated reference
+            PathBuilder.LoadRoutine(_loadedRoutine.line, _loadedRoutine.nodes);
+            _loadedRoutine = null; // Clear the loaded routine
+            
+            // Transition to Tweaking state (Cancel, Preview, Publish available)
+            _routineBuilder.TransitionTo(RoutineBuilder.State.Tweaking, RoutineBuilder.Operation.Calibrate);
+        }
+        else
+        {
+            // Start recording a new routine
+            PathBuilder.Activate();
+            PathBuilder.AddNode(1.5f);
+            _routineBuilder.TransitionTo(RoutineBuilder.State.Recording, RoutineBuilder.Operation.Calibrate);
+        }
     }
 
     void AddNodeHandler()
@@ -223,8 +271,12 @@ public class MainStateHandler : MonoBehaviour
         // Clean up all path data and reset PathBuilder
         PathBuilder.Restore();
         
+        // Clear any loaded routine
+        _loadedRoutine = null;
+        
         // Transition back to Idle state
         _routineBuilder.TransitionTo(RoutineBuilder.State.Idle, RoutineBuilder.Operation.CancelRoutine);
+        StartCoroutine(ApiService.GetRoutines());
         
         // Show main menu
         mainMenu.SetActive(true);
